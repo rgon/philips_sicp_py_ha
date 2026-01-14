@@ -15,7 +15,6 @@ from .messages import (
     SmartPowerLevel,
     ApmMode,
     IPParameterCode,
-    IPParameterValueType,
 )
 
 # Hardcoded display configuration

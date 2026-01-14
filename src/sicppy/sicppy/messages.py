@@ -9,59 +9,60 @@ from enum import IntEnum
 # checksum = XOR of all previous bytes
 
 # SICP Commands
-CMD_COMMUNICATION_CONTROL = 0x00
-CMD_POWER_STATE_SET = 0x18
-CMD_POWER_STATE_GET = 0x19
-CMD_BACKLIGHT_GET = 0x71
-CMD_BACKLIGHT_SET = 0x72
-CMD_INPUT_SOURCE_SET = 0xAC
-CMD_CURRENT_SOURCE_GET = 0xAD
-CMD_ANDROID_4K_GET = 0xC6
-CMD_ANDROID_4K_SET = 0xC7
-CMD_WOL_GET = 0x9C
-CMD_WOL_SET = 0x9D
-CMD_IP_PARAMETER_GET = 0x82
-CMD_COLD_START_SET = 0xA3
-CMD_COLD_START_GET = 0xA4
-CMD_TEMPERATURE_GET = 0x2F
-CMD_SICP_INFO_GET = 0xA2
-CMD_MODEL_INFO_GET = 0xA1
-CMD_SERIAL_GET = 0x15
-CMD_VIDEO_SIGNAL_GET = 0x59
-CMD_AV_MUTE_GET = 0x7A
-CMD_AV_MUTE_SET = 0x7B
-CMD_PICTURE_STYLE_GET = 0x65
-CMD_PICTURE_STYLE_SET = 0x66
-CMD_MONITOR_ID_SET = 0x69
-CMD_VIDEO_PARAMETERS_SET = 0x32
-CMD_VIDEO_PARAMETERS_GET = 0x33
-CMD_COLOR_TEMPERATURE_SET = 0x34
-CMD_COLOR_TEMPERATURE_GET = 0x35
-CMD_COLOR_TEMPERATURE_FINE_SET = 0x11
-CMD_COLOR_TEMPERATURE_FINE_GET = 0x12
-CMD_TEST_PATTERN_GET = 0x6C
-CMD_TEST_PATTERN_SET = 0x6D
-CMD_REMOTE_LOCK_SET = 0x1C
-CMD_REMOTE_LOCK_GET = 0x1D
-CMD_REMOTE_CONTROL_SIM = 0xFE
-CMD_POWER_ON_LOGO_SET = 0x3E
-CMD_POWER_ON_LOGO_GET = 0x3F
-CMD_OSD_INFO_SET = 0x2C
-CMD_OSD_INFO_GET = 0x2D
-CMD_AUTO_SIGNAL_SET = 0xAE
-CMD_AUTO_SIGNAL_GET = 0xAF
-CMD_GROUP_ID_SET = 0x5C
-CMD_GROUP_ID_GET = 0x5D
-CMD_POWER_SAVE_SET = 0xD2
-CMD_POWER_SAVE_GET = 0xD3
-CMD_SMART_POWER_SET = 0xDD
-CMD_SMART_POWER_GET = 0xDE
-CMD_APM_SET = 0xD0
-CMD_APM_GET = 0xD1
-CMD_VOLUME_SET = 0x44
-CMD_VOLUME_GET = 0x45
-CMD_MUTE_GET = 0x46
-CMD_MUTE_SET = 0x47
+class SICPCommand(IntEnum):
+    COMMUNICATION_CONTROL = 0x00
+    POWER_STATE_SET = 0x18
+    POWER_STATE_GET = 0x19
+    BACKLIGHT_GET = 0x71
+    BACKLIGHT_SET = 0x72
+    INPUT_SOURCE_SET = 0xAC
+    CURRENT_SOURCE_GET = 0xAD
+    ANDROID_4K_GET = 0xC6
+    ANDROID_4K_SET = 0xC7
+    WOL_GET = 0x9C
+    WOL_SET = 0x9D
+    IP_PARAMETER_GET = 0x82
+    COLD_START_SET = 0xA3
+    COLD_START_GET = 0xA4
+    TEMPERATURE_GET = 0x2F
+    SICP_INFO_GET = 0xA2
+    MODEL_INFO_GET = 0xA1
+    SERIAL_GET = 0x15
+    VIDEO_SIGNAL_GET = 0x59
+    AV_MUTE_GET = 0x7A
+    AV_MUTE_SET = 0x7B
+    PICTURE_STYLE_GET = 0x65
+    PICTURE_STYLE_SET = 0x66
+    MONITOR_ID_SET = 0x69
+    VIDEO_PARAMETERS_SET = 0x32
+    VIDEO_PARAMETERS_GET = 0x33
+    COLOR_TEMPERATURE_SET = 0x34
+    COLOR_TEMPERATURE_GET = 0x35
+    COLOR_TEMPERATURE_FINE_SET = 0x11
+    COLOR_TEMPERATURE_FINE_GET = 0x12
+    TEST_PATTERN_GET = 0x6C
+    TEST_PATTERN_SET = 0x6D
+    REMOTE_LOCK_SET = 0x1C
+    REMOTE_LOCK_GET = 0x1D
+    REMOTE_CONTROL_SIM = 0xFE
+    POWER_ON_LOGO_SET = 0x3E
+    POWER_ON_LOGO_GET = 0x3F
+    OSD_INFO_SET = 0x2C
+    OSD_INFO_GET = 0x2D
+    AUTO_SIGNAL_SET = 0xAE
+    AUTO_SIGNAL_GET = 0xAF
+    GROUP_ID_SET = 0x5C
+    GROUP_ID_GET = 0x5D
+    POWER_SAVE_SET = 0xD2
+    POWER_SAVE_GET = 0xD3
+    SMART_POWER_SET = 0xDD
+    SMART_POWER_GET = 0xDE
+    APM_SET = 0xD0
+    APM_GET = 0xD1
+    VOLUME_SET = 0x44
+    VOLUME_GET = 0x45
+    MUTE_GET = 0x46
+    MUTE_SET = 0x47
 
 # Communication Control Response Codes
 RESPONSE_ACK = 0x06   # Command well executed
@@ -328,37 +329,37 @@ def build_power_message(monitor_id, power_on):
     """Build SICP message for screen power control (set)."""
     msg_size = 0x06
     param = PowerState.POWER_ON if power_on else PowerState.POWER_OFF
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_SET, param)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_STATE_SET, param)
     
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_SET, param, checksum])
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_STATE_SET, param, checksum])
 
 
 def build_power_get_message(monitor_id):
     """Build SICP message to query current power state."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_STATE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_STATE_GET, checksum])
 
 
 def build_cold_start_get_message(monitor_id):
     """Build SICP message to query cold-start power state."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLD_START_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLD_START_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.COLD_START_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.COLD_START_GET, checksum])
 
 
 def build_cold_start_set_message(monitor_id, cold_state):
     """Build SICP message to set cold-start power behavior."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.COLD_START_SET, cold_state)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.COLD_START_SET, cold_state, checksum])
 
 
 def build_temperature_get_message(monitor_id):
     """Build SICP message to query onboard temperature sensors."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEMPERATURE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_TEMPERATURE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.TEMPERATURE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.TEMPERATURE_GET, checksum])
 
 
 def build_sicp_info_get_message(monitor_id, label_code):
@@ -368,14 +369,14 @@ def build_sicp_info_get_message(monitor_id, label_code):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_SICP_INFO_GET,
+        SICPCommand.SICP_INFO_GET,
         label_code,
     )
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_SICP_INFO_GET,
+        SICPCommand.SICP_INFO_GET,
         label_code,
         checksum,
     ])
@@ -384,8 +385,8 @@ def build_sicp_info_get_message(monitor_id, label_code):
 def build_serial_get_message(monitor_id):
     """Build SICP message to request serial number."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.SERIAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.SERIAL_GET, checksum])
 
 
 def build_video_parameters_set_message(
@@ -417,7 +418,7 @@ def build_video_parameters_set_message(
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_VIDEO_PARAMETERS_SET,
+        SICPCommand.VIDEO_PARAMETERS_SET,
         *payload,
     )
 
@@ -425,7 +426,7 @@ def build_video_parameters_set_message(
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_VIDEO_PARAMETERS_SET,
+        SICPCommand.VIDEO_PARAMETERS_SET,
         *payload,
         checksum,
     ])
@@ -434,22 +435,22 @@ def build_video_parameters_set_message(
 def build_video_parameters_get_message(monitor_id):
     """Build SICP message to request video parameters (0x33 command)."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VIDEO_PARAMETERS_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_VIDEO_PARAMETERS_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.VIDEO_PARAMETERS_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.VIDEO_PARAMETERS_GET, checksum])
 
 
 def build_color_temperature_set_message(monitor_id, mode_code):
     """Build SICP message to set color temperature (0x34 command)."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_SET, mode_code)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_SET, mode_code, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_SET, mode_code, checksum])
 
 
 def build_color_temperature_get_message(monitor_id):
     """Build SICP message to request color temperature (0x35 command)."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_GET, checksum])
 
 
 def build_color_temperature_fine_set_message(monitor_id, step_value):
@@ -459,14 +460,14 @@ def build_color_temperature_fine_set_message(monitor_id, step_value):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_COLOR_TEMPERATURE_FINE_SET,
+        SICPCommand.COLOR_TEMPERATURE_FINE_SET,
         step_value,
     )
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_COLOR_TEMPERATURE_FINE_SET,
+        SICPCommand.COLOR_TEMPERATURE_FINE_SET,
         step_value,
         checksum,
     ])
@@ -475,62 +476,62 @@ def build_color_temperature_fine_set_message(monitor_id, step_value):
 def build_color_temperature_fine_get_message(monitor_id):
     """Build SICP message to request 100K-step color temperature (0x12 command)."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_FINE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_FINE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_FINE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.COLOR_TEMPERATURE_FINE_GET, checksum])
 
 
 def build_video_signal_get_message(monitor_id):
     """Build SICP message to query video signal presence."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.VIDEO_SIGNAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.VIDEO_SIGNAL_GET, checksum])
 
 
 def build_av_mute_get_message(monitor_id):
     """Build SICP message to query A/V mute state."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.AV_MUTE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.AV_MUTE_GET, checksum])
 
 
 def build_av_mute_set_message(monitor_id, mute_on):
     """Build SICP message to set A/V mute state."""
     msg_size = 0x06
     param = 0x01 if mute_on else 0x00
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.AV_MUTE_SET, param)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.AV_MUTE_SET, param, checksum])
 
 
 def build_picture_style_get_message(monitor_id):
     """Build SICP message to query current picture style."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.PICTURE_STYLE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.PICTURE_STYLE_GET, checksum])
 
 
 def build_picture_style_set_message(monitor_id, style_code):
     """Build SICP message to set picture style."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.PICTURE_STYLE_SET, style_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.PICTURE_STYLE_SET, style_code, checksum])
 
 
 def build_test_pattern_get_message(monitor_id):
     """Build SICP message to query the current internal test pattern."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.TEST_PATTERN_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.TEST_PATTERN_GET, checksum])
 
 
 def build_test_pattern_set_message(monitor_id, pattern_code):
     """Build SICP message to set the internal test pattern."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_SET, pattern_code)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.TEST_PATTERN_SET, pattern_code)
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_TEST_PATTERN_SET,
+        SICPCommand.TEST_PATTERN_SET,
         pattern_code,
         checksum,
     ])
@@ -539,19 +540,19 @@ def build_test_pattern_set_message(monitor_id, pattern_code):
 def build_remote_lock_get_message(monitor_id):
     """Build SICP message to get remote control lock status."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.REMOTE_LOCK_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.REMOTE_LOCK_GET, checksum])
 
 
 def build_remote_lock_set_message(monitor_id, state_code):
     """Build SICP message to set remote control/keypad lock state."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_SET, state_code)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.REMOTE_LOCK_SET, state_code)
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_REMOTE_LOCK_SET,
+        SICPCommand.REMOTE_LOCK_SET,
         state_code,
         checksum,
     ])
@@ -560,19 +561,19 @@ def build_remote_lock_set_message(monitor_id, state_code):
 def build_power_on_logo_get_message(monitor_id):
     """Build SICP message to query power-on logo setting."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_ON_LOGO_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_ON_LOGO_GET, checksum])
 
 
 def build_power_on_logo_set_message(monitor_id, mode_code):
     """Build SICP message to set power-on logo behavior."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_SET, mode_code)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_ON_LOGO_SET, mode_code)
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_POWER_ON_LOGO_SET,
+        SICPCommand.POWER_ON_LOGO_SET,
         mode_code,
         checksum,
     ])
@@ -581,19 +582,19 @@ def build_power_on_logo_set_message(monitor_id, mode_code):
 def build_osd_info_get_message(monitor_id):
     """Build SICP message to get information OSD timeout."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.OSD_INFO_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.OSD_INFO_GET, checksum])
 
 
 def build_osd_info_set_message(monitor_id, timeout_code):
     """Build SICP message to set information OSD timeout."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_SET, timeout_code)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.OSD_INFO_SET, timeout_code)
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_OSD_INFO_SET,
+        SICPCommand.OSD_INFO_SET,
         timeout_code,
         checksum,
     ])
@@ -602,19 +603,19 @@ def build_osd_info_set_message(monitor_id, timeout_code):
 def build_auto_signal_get_message(monitor_id):
     """Build SICP message to query auto signal detection mode."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.AUTO_SIGNAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.AUTO_SIGNAL_GET, checksum])
 
 
 def build_auto_signal_set_message(monitor_id, mode_code):
     """Build SICP message to set auto signal detection mode."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_SET, mode_code)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.AUTO_SIGNAL_SET, mode_code)
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_AUTO_SIGNAL_SET,
+        SICPCommand.AUTO_SIGNAL_SET,
         mode_code,
         checksum,
     ])
@@ -628,7 +629,7 @@ def build_remote_key_simulation_message(monitor_id, key_code):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_REMOTE_CONTROL_SIM,
+        SICPCommand.REMOTE_CONTROL_SIM,
         key_code,
         reserved,
     )
@@ -636,7 +637,7 @@ def build_remote_key_simulation_message(monitor_id, key_code):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_REMOTE_CONTROL_SIM,
+        SICPCommand.REMOTE_CONTROL_SIM,
         key_code,
         reserved,
         checksum,
@@ -646,15 +647,15 @@ def build_remote_key_simulation_message(monitor_id, key_code):
 def build_group_id_get_message(monitor_id):
     """Build SICP message to query current group ID."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.GROUP_ID_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.GROUP_ID_GET, checksum])
 
 
 def build_group_id_set_message(monitor_id, group_id):
     """Build SICP message to set the group ID."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_SET, group_id)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_SET, group_id, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.GROUP_ID_SET, group_id)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.GROUP_ID_SET, group_id, checksum])
 
 
 def build_monitor_id_set_message(monitor_id, new_monitor_id):
@@ -664,14 +665,14 @@ def build_monitor_id_set_message(monitor_id, new_monitor_id):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_MONITOR_ID_SET,
+        SICPCommand.MONITOR_ID_SET,
         new_monitor_id,
     )
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_MONITOR_ID_SET,
+        SICPCommand.MONITOR_ID_SET,
         new_monitor_id,
         checksum,
     ])
@@ -680,43 +681,43 @@ def build_monitor_id_set_message(monitor_id, new_monitor_id):
 def build_power_save_get_message(monitor_id):
     """Build SICP message to query current power save mode."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_SAVE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_SAVE_GET, checksum])
 
 
 def build_power_save_set_message(monitor_id, mode_code):
     """Build SICP message to set power save mode."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_SET, mode_code)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_SET, mode_code, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_SAVE_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.POWER_SAVE_SET, mode_code, checksum])
 
 
 def build_smart_power_get_message(monitor_id):
     """Build SICP message to query smart power level."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.SMART_POWER_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.SMART_POWER_GET, checksum])
 
 
 def build_smart_power_set_message(monitor_id, level_code):
     """Build SICP message to set smart power level."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_SET, level_code)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_SET, level_code, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.SMART_POWER_SET, level_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.SMART_POWER_SET, level_code, checksum])
 
 
 def build_apm_get_message(monitor_id):
     """Build SICP message to query advanced power management state."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_APM_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_APM_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.APM_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.APM_GET, checksum])
 
 
 def build_apm_set_message(monitor_id, mode_code):
     """Build SICP message to set advanced power management state."""
     msg_size = 0x06
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_APM_SET, mode_code)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_APM_SET, mode_code, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.APM_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.APM_SET, mode_code, checksum])
 
 
 def build_model_info_get_message(monitor_id, label_code):
@@ -726,14 +727,14 @@ def build_model_info_get_message(monitor_id, label_code):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_MODEL_INFO_GET,
+        SICPCommand.MODEL_INFO_GET,
         label_code,
     )
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_MODEL_INFO_GET,
+        SICPCommand.MODEL_INFO_GET,
         label_code,
         checksum,
     ])
@@ -751,9 +752,9 @@ def build_backlight_set_message(monitor_id, backlight_on):
     """
     msg_size = 0x06
     param = 0x01 if backlight_on else 0x00
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_SET, param)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.BACKLIGHT_SET, param)
     
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_SET, param, checksum])
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.BACKLIGHT_SET, param, checksum])
 
 
 def build_backlight_get_message(monitor_id):
@@ -764,16 +765,16 @@ def build_backlight_get_message(monitor_id):
     Command: 0x71
     """
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_GET)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.BACKLIGHT_GET)
     
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_GET, checksum])
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.BACKLIGHT_GET, checksum])
 
 
 def build_volume_get_message(monitor_id):
     """Build SICP message to get speaker/audio-out volume levels."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VOLUME_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_VOLUME_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.VOLUME_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.VOLUME_GET, checksum])
 
 
 def build_volume_set_message(monitor_id, speaker_level, audio_out_level=None):
@@ -788,7 +789,7 @@ def build_volume_set_message(monitor_id, speaker_level, audio_out_level=None):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_VOLUME_SET,
+        SICPCommand.VOLUME_SET,
         speaker_level,
         audio_out_level,
     )
@@ -796,7 +797,7 @@ def build_volume_set_message(monitor_id, speaker_level, audio_out_level=None):
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_VOLUME_SET,
+        SICPCommand.VOLUME_SET,
         speaker_level,
         audio_out_level,
         checksum,
@@ -806,16 +807,16 @@ def build_volume_set_message(monitor_id, speaker_level, audio_out_level=None):
 def build_mute_get_message(monitor_id):
     """Build SICP message to read mute status."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_MUTE_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_MUTE_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.MUTE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.MUTE_GET, checksum])
 
 
 def build_mute_set_message(monitor_id, mute_on):
     """Build SICP message to set mute state (True=on)."""
     msg_size = 0x06
     param = 0x01 if mute_on else 0x00
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_MUTE_SET, param)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_MUTE_SET, param, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.MUTE_SET, param)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.MUTE_SET, param, checksum])
 
 
 def build_android_4k_set_message(monitor_id, enable_4k):
@@ -832,9 +833,9 @@ def build_android_4k_set_message(monitor_id, enable_4k):
     """
     msg_size = 0x06
     param = 0x01 if enable_4k else 0x00
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_SET, param)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.ANDROID_4K_SET, param)
     
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_SET, param, checksum])
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.ANDROID_4K_SET, param, checksum])
 
 
 def build_android_4k_get_message(monitor_id):
@@ -847,36 +848,36 @@ def build_android_4k_get_message(monitor_id):
     Available from SICP 2.11+ with displays that support this feature.
     """
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.ANDROID_4K_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.ANDROID_4K_GET, checksum])
 
 
 def build_wol_get_message(monitor_id):
     """Build SICP message to get Wake on LAN status."""
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_WOL_GET)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_WOL_GET, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.WOL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.WOL_GET, checksum])
 
 
 def build_wol_set_message(monitor_id, enable_wol):
     """Build SICP message to set Wake on LAN status."""
     msg_size = 0x06
     param = 0x01 if enable_wol else 0x00
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_WOL_SET, param)
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_WOL_SET, param, checksum])
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.WOL_SET, param)
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.WOL_SET, param, checksum])
 
 
 def build_ip_parameter_get_message(monitor_id, parameter_code, value_type_code):
     """Build SICP message to get IP parameter data."""
     msg_size = 0x07
     checksum = calculate_checksum(
-        msg_size, monitor_id, GROUP_ID, CMD_IP_PARAMETER_GET, parameter_code, value_type_code
+        msg_size, monitor_id, GROUP_ID, SICPCommand.IP_PARAMETER_GET, parameter_code, value_type_code
     )
     return bytes([
         msg_size,
         monitor_id,
         GROUP_ID,
-        CMD_IP_PARAMETER_GET,
+        SICPCommand.IP_PARAMETER_GET,
         parameter_code,
         value_type_code,
         checksum,
@@ -907,12 +908,12 @@ def build_input_source_message(monitor_id, input_source_code, playlist=0, osd_st
     msg_size = 0x09
     
     checksum = calculate_checksum(
-        msg_size, monitor_id, GROUP_ID, CMD_INPUT_SOURCE_SET,
+        msg_size, monitor_id, GROUP_ID, SICPCommand.INPUT_SOURCE_SET,
         input_source_code, playlist, osd_style, effect_duration
     )
     
     return bytes([
-        msg_size, monitor_id, GROUP_ID, CMD_INPUT_SOURCE_SET,
+        msg_size, monitor_id, GROUP_ID, SICPCommand.INPUT_SOURCE_SET,
         input_source_code, playlist, osd_style, effect_duration,
         checksum
     ])
@@ -926,7 +927,7 @@ def build_get_input_source_message(monitor_id):
     Command: 0xAD
     """
     msg_size = 0x05
-    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_CURRENT_SOURCE_GET)
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, SICPCommand.CURRENT_SOURCE_GET)
     
-    return bytes([msg_size, monitor_id, GROUP_ID, CMD_CURRENT_SOURCE_GET, checksum])
+    return bytes([msg_size, monitor_id, GROUP_ID, SICPCommand.CURRENT_SOURCE_GET, checksum])
 

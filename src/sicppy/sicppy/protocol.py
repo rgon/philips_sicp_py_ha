@@ -3,28 +3,27 @@ from abc import abstractmethod
 import logging
 
 from .messages import build_power_message, build_power_get_message, PowerState, build_cold_start_get_message, \
-    ColdStartPowerState, build_cold_start_set_message, build_temperature_get_message, CMD_TEMPERATURE_GET, \
-    build_sicp_info_get_message, SICP_INFO_LABELS, CMD_SICP_INFO_GET, build_model_info_get_message, MODEL_INFO_LABELS, \
-    CMD_MODEL_INFO_GET, build_serial_get_message, CMD_SERIAL_GET, build_video_signal_get_message, CMD_VIDEO_SIGNAL_GET, \
-    build_picture_style_get_message, PictureStyle, CMD_PICTURE_STYLE_GET, build_picture_style_set_message, \
-    build_video_parameters_set_message, build_video_parameters_get_message, CMD_VIDEO_PARAMETERS_GET, \
-    build_color_temperature_set_message, ColorTemperatureMode, CMD_COLOR_TEMPERATURE_GET, \
+    ColdStartPowerState, build_cold_start_set_message, build_temperature_get_message, SICPCommand, \
+    build_sicp_info_get_message, SICP_INFO_LABELS, build_model_info_get_message, MODEL_INFO_LABELS, \
+    build_serial_get_message, build_video_signal_get_message, \
+    build_picture_style_get_message, PictureStyle, build_picture_style_set_message, \
+    build_video_parameters_set_message, build_video_parameters_get_message, \
+    build_color_temperature_set_message, ColorTemperatureMode, \
     build_color_temperature_get_message, build_color_temperature_fine_set_message, \
-    build_color_temperature_fine_get_message, CMD_COLOR_TEMPERATURE_FINE_GET, build_test_pattern_get_message, \
-    TestPattern, CMD_TEST_PATTERN_GET, build_test_pattern_set_message, build_remote_lock_get_message, \
-    RemoteLockState, CMD_REMOTE_LOCK_GET, build_remote_lock_set_message, build_remote_key_simulation_message, \
-    RemoteKey, build_power_on_logo_get_message, PowerOnLogoMode, CMD_POWER_ON_LOGO_GET, \
-    build_power_on_logo_set_message, build_osd_info_get_message, CMD_OSD_INFO_GET, build_osd_info_set_message, \
-    build_auto_signal_get_message, AutoSignalMode, CMD_AUTO_SIGNAL_GET, build_auto_signal_set_message, \
-    build_power_save_get_message, PowerSaveMode, CMD_POWER_SAVE_GET, build_power_save_set_message, \
-    build_smart_power_get_message, SmartPowerLevel, CMD_SMART_POWER_GET, build_smart_power_set_message, \
-    build_apm_get_message, ApmMode, CMD_APM_GET, build_apm_set_message, build_group_id_get_message, \
-    CMD_GROUP_ID_GET, build_group_id_set_message, build_monitor_id_set_message, build_backlight_set_message, \
+    build_color_temperature_fine_get_message, build_test_pattern_get_message, \
+    TestPattern, build_test_pattern_set_message, build_remote_lock_get_message, \
+    RemoteLockState, build_remote_lock_set_message, build_remote_key_simulation_message, \
+    RemoteKey, build_power_on_logo_get_message, PowerOnLogoMode, build_power_on_logo_set_message, \
+    build_osd_info_get_message, build_osd_info_set_message, build_auto_signal_get_message, AutoSignalMode, build_auto_signal_set_message, \
+    build_power_save_get_message, PowerSaveMode, build_power_save_set_message, \
+    build_smart_power_get_message, SmartPowerLevel, build_smart_power_set_message, \
+    build_apm_get_message, ApmMode, build_apm_set_message, build_group_id_get_message, \
+    build_group_id_set_message, build_monitor_id_set_message, build_backlight_set_message, \
     build_backlight_get_message, build_android_4k_set_message, \
-    build_android_4k_get_message, build_wol_set_message, build_wol_get_message, CMD_WOL_GET, \
+    build_android_4k_get_message, build_wol_set_message, build_wol_get_message, \
     build_volume_set_message, build_volume_get_message, build_mute_get_message, build_mute_set_message, \
-    build_av_mute_get_message, build_av_mute_set_message, CMD_AV_MUTE_GET, \
-    build_ip_parameter_get_message, CMD_IP_PARAMETER_GET, IPParameterCode, IPParameterValueType, \
+    build_av_mute_get_message, build_av_mute_set_message, \
+    build_ip_parameter_get_message, IPParameterCode, IPParameterValueType, \
     build_input_source_message, build_get_input_source_message, InputSource
 
 from .response import SicpResponse
@@ -203,7 +202,7 @@ class SICPProtocol:
 
         if response and response.is_data_response:
             payload = response.data_payload
-            if payload and payload[0] == CMD_TEMPERATURE_GET:
+            if payload and payload[0] == SICPCommand.TEMPERATURE_GET:
                 payload = payload[1:]
 
             if not payload:
@@ -235,7 +234,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_SICP_INFO_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.SICP_INFO_GET and len(payload) > 1:
                 payload = payload[1:]
 
             info_text = ''.join(chr(b) for b in payload if 32 <= b <= 126)
@@ -254,7 +253,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_MODEL_INFO_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.MODEL_INFO_GET and len(payload) > 1:
                 payload = payload[1:]
 
             text = ''.join(chr(b) for b in payload if 32 <= b <= 126)
@@ -272,7 +271,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_SERIAL_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.SERIAL_GET and len(payload) > 1:
                 payload = payload[1:]
 
             serial_chars = [chr(b) for b in payload if 32 <= b <= 126]
@@ -291,7 +290,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_VIDEO_SIGNAL_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.VIDEO_SIGNAL_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -311,7 +310,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_PICTURE_STYLE_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.PICTURE_STYLE_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -356,7 +355,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_VIDEO_PARAMETERS_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.VIDEO_PARAMETERS_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -383,7 +382,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_COLOR_TEMPERATURE_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.COLOR_TEMPERATURE_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -419,7 +418,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_COLOR_TEMPERATURE_FINE_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.COLOR_TEMPERATURE_FINE_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -443,7 +442,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_TEST_PATTERN_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.TEST_PATTERN_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -472,7 +471,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_REMOTE_LOCK_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.REMOTE_LOCK_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -510,7 +509,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_POWER_ON_LOGO_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.POWER_ON_LOGO_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -539,7 +538,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_OSD_INFO_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.OSD_INFO_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -573,7 +572,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_AUTO_SIGNAL_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.AUTO_SIGNAL_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -605,7 +604,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_POWER_SAVE_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.POWER_SAVE_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -634,7 +633,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_SMART_POWER_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.SMART_POWER_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -663,7 +662,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_APM_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.APM_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -692,7 +691,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_GROUP_ID_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.GROUP_ID_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -807,7 +806,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_WOL_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.WOL_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -901,7 +900,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             payload = response.data_payload
-            if payload[0] == CMD_AV_MUTE_GET and len(payload) > 1:
+            if payload[0] == SICPCommand.AV_MUTE_GET and len(payload) > 1:
                 payload = payload[1:]
 
             if payload:
@@ -939,7 +938,7 @@ class SICPProtocol:
             return None
 
         payload = response.data_payload
-        if payload[0] == CMD_IP_PARAMETER_GET and len(payload) > 1:
+        if payload[0] == SICPCommand.IP_PARAMETER_GET and len(payload) > 1:
             payload = payload[1:]
 
         if len(payload) < 2:

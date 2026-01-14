@@ -1,4 +1,4 @@
-from .messages import CMD_COMMUNICATION_CONTROL, RESPONSE_ACK, RESPONSE_NAV, RESPONSE_NACK
+from .messages import SICPCommand.COMMUNICATION_CONTROL, RESPONSE_ACK, RESPONSE_NAV, RESPONSE_NACK
 
 class SicpResponse:
     """Parse and represent a SICP response."""
@@ -22,8 +22,8 @@ class SicpResponse:
         self.monitor_id = data[1]
         
         # Check if this is a Communication Control response (ACK/NAV/NACK)
-        if len(data) >= 6 and data[3] == CMD_COMMUNICATION_CONTROL: 
-            self.command = CMD_COMMUNICATION_CONTROL
+        if len(data) >= 6 and data[3] == SICPCommand.COMMUNICATION_CONTROL: 
+            self.command = SICPCommand.COMMUNICATION_CONTROL
             response_code = data[4]
             
             if response_code == RESPONSE_ACK:
