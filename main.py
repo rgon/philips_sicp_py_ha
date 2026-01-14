@@ -36,6 +36,11 @@ CMD_WOL_SET = 0x9D
 CMD_IP_PARAMETER_GET = 0x82
 CMD_COLD_START_SET = 0xA3
 CMD_COLD_START_GET = 0xA4
+CMD_TEMPERATURE_GET = 0x2F
+CMD_SICP_INFO_GET = 0xA2
+CMD_MODEL_INFO_GET = 0xA1
+CMD_SERIAL_GET = 0x15
+CMD_VIDEO_SIGNAL_GET = 0x59
 CMD_VOLUME_SET = 0x44
 CMD_VOLUME_GET = 0x45
 CMD_MUTE_GET = 0x46
@@ -59,6 +64,24 @@ COLD_START_STATE_NAMES = {
     COLD_START_POWER_OFF: "power-off",
     COLD_START_FORCED_ON: "forced-on",
     COLD_START_LAST_STATUS: "last-status",
+}
+
+
+SICP_INFO_LABELS = {
+    0x00: "sicp-version",
+    0x01: "platform-label",
+    0x02: "platform-version",
+    0x03: "custom-intent-version",
+}
+
+MODEL_INFO_LABELS = {
+    0x00: "model-number",
+    0x01: "firmware-version",
+    0x02: "build-date",
+    0x03: "android-firmware",
+    0x04: "hdmi-switch-version",
+    0x05: "lan-firmware",
+    0x06: "hdmi-switch2-version",
 }
 
 # Backlight State Parameters
@@ -285,6 +308,67 @@ def build_cold_start_set_message(monitor_id, cold_state):
     msg_size = 0x06
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state, checksum])
+
+
+def build_temperature_get_message(monitor_id):
+    """Build SICP message to query onboard temperature sensors."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEMPERATURE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_TEMPERATURE_GET, checksum])
+
+
+def build_sicp_info_get_message(monitor_id, label_code):
+    """Build SICP message to get version/platform information."""
+    msg_size = 0x06
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_SICP_INFO_GET,
+        label_code,
+    )
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_SICP_INFO_GET,
+        label_code,
+        checksum,
+    ])
+
+
+def build_serial_get_message(monitor_id):
+    """Build SICP message to request serial number."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET, checksum])
+
+
+def build_video_signal_get_message(monitor_id):
+    """Build SICP message to query video signal presence."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET, checksum])
+
+
+def build_model_info_get_message(monitor_id, label_code):
+    """Build SICP message to get model/firmware/build details."""
+    msg_size = 0x06
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_MODEL_INFO_GET,
+        label_code,
+    )
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_MODEL_INFO_GET,
+        label_code,
+        checksum,
+    ])
 
 
 def build_backlight_set_message(monitor_id, backlight_on):
@@ -521,7 +605,7 @@ def send_message(monitor_id, ip, message, action_description, expect_data=False)
             return None
         elif response.is_data_response:
             print(f"✓ {action_description} - {ip} (Monitor {monitor_id})")
-            print(f"  Response: {response}")
+            # print(f"  Response: {response}")
         else:
             print(f"⚠ {action_description} - {ip} (Monitor {monitor_id})")
             print(f"  Response: {response}")
@@ -589,6 +673,121 @@ def set_cold_start_power_state(monitor_id, ip, state_code):
     action = f"Set cold-start power state to {label}"
     response = send_message(monitor_id, ip, message, action)
     return response and response.is_ack
+
+
+def get_temperature(monitor_id, ip):
+    """Read temperature sensors (returns list of Celsius values)."""
+    message = build_temperature_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get temperature", expect_data=True)
+
+    if response and response.is_data_response:
+        payload = response.data_payload
+        if payload and payload[0] == CMD_TEMPERATURE_GET:
+            payload = payload[1:]
+
+        if not payload:
+            print("  No temperature data reported")
+            return None
+
+        temps = []
+        for idx, value in enumerate(payload, start=1):
+            # Some platforms may return invalid 0xFF for unused sensors
+            if value == 0xFF:
+                continue
+            print(f"  Temperature sensor {idx}: {value}°C")
+            temps.append(value)
+
+        if temps:
+            return temps
+
+        print("  No valid temperature values reported")
+
+    return None
+
+
+def get_sicp_info(monitor_id, ip, label_code):
+    """Retrieve SICP version/platform info text for the requested label code."""
+    message = build_sicp_info_get_message(monitor_id, label_code)
+    label = SICP_INFO_LABELS.get(label_code, f"0x{label_code:02X}")
+    response = send_message(
+        monitor_id,
+        ip,
+        message,
+        f"Get SICP info ({label})",
+        expect_data=True,
+    )
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_SICP_INFO_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        info_text = ''.join(chr(b) for b in payload if 32 <= b <= 126)
+        print(f"  {label}: {info_text or '(no data)'}")
+        return info_text
+
+    return None
+
+
+def get_model_info(monitor_id, ip, label_code):
+    """Retrieve model/firmware/build information for the given label code."""
+    message = build_model_info_get_message(monitor_id, label_code)
+    label = MODEL_INFO_LABELS.get(label_code, f"0x{label_code:02X}")
+    response = send_message(
+        monitor_id,
+        ip,
+        message,
+        f"Get model info ({label})",
+        expect_data=True,
+    )
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_MODEL_INFO_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        text = ''.join(chr(b) for b in payload if 32 <= b <= 126)
+        print(f"  {label}: {text or '(no data)'}")
+        return text
+
+    return None
+
+
+def get_serial_number(monitor_id, ip):
+    """Fetch the 14-character display serial number."""
+    message = build_serial_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get serial number", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_SERIAL_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        serial_chars = [chr(b) for b in payload if 32 <= b <= 126]
+        serial = ''.join(serial_chars)
+        print(f"  Serial number: {serial or '(no data)'}")
+        return serial
+
+    return None
+
+
+def get_video_signal_status(monitor_id, ip):
+    """Determine if a video signal is present on the active input."""
+    message = build_video_signal_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get video signal status", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_VIDEO_SIGNAL_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            status = payload[0]
+            present = status == 0x01
+            print(f"  Video signal: {'present' if present else 'not present'}")
+            return present
+
+    return None
 
 
 def backlight_control(monitor_id, ip, backlight_on):
@@ -866,6 +1065,11 @@ def print_usage():
     print("  get-power                 Get current power state")
     print("  get-cold-start            Get cold-start power behavior")
     print("  set-cold-start <mode>     Set cold-start power (off|forced|last)")
+    print("  get-temperature           Read temperature sensors")
+    print("  get-sicp-info <label>     Get SICP info (version/platform)")
+    print("  get-model-info <label>    Get model/firmware/build info")
+    print("  get-serial                Get display serial number")
+    print("  get-video-signal          Check if active input has signal")
     print("  backlight-on              Turn backlight on")
     print("  backlight-off             Turn backlight off")
     print("  get-backlight             Get current backlight state")
@@ -890,19 +1094,8 @@ def print_usage():
     print("  home, kiosk, screenshare, googlecast")
     print("\nExamples:")
     print(f"  {sys.argv[0]} 0 off                      # Turn off monitor 0")
-    print(f"  {sys.argv[0]} 1 on                       # Turn on monitor 1")
-    print(f"  {sys.argv[0]} 0 backlight-off            # Turn off monitor 0 backlight")
-    print(f"  {sys. argv[0]} 0 4k-on                    # Enable Android 4K on monitor 0")
-    print(f"  {sys.argv[0]} 0 get-4k                   # Check Android 4K status")
-    print(f"  {sys.argv[0]} 0 input browser            # Set monitor 0 to browser")
-    print(f"  {sys.argv[0]} 0 input mediaplayer 2      # Set to media player, playlist 2")
-    print(f"  {sys.argv[0]} 1 input hdmi1              # Set monitor 1 to HDMI 1")
-    print(f"  {sys.argv[0]} 0 get-input                # Get monitor 0 current input")
-    print(f"  {sys.argv[0]} all off                    # Turn off all monitors")
-    print(f"  {sys.argv[0]} all 4k-on                  # Enable 4K on all monitors")
-    print(f"  {sys.argv[0]} all wol-on                 # Enable Wake on LAN on all monitors")
-    print(f"  {sys.argv[0]} 0 get-ip ip queued         # Show queued IP address")
-
+    print(f"  {sys.argv[0]} all get-input                   # Check Android 4K status")
+    print(f"  {sys.argv[0]} 0 input mediaplayer 1      # Set to media player, playlist 2")
 
 def main():
     """Main entry point."""
@@ -1017,6 +1210,81 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if set_cold_start_power_state(mon_id, mon_ip, cold_state):
+                success_count += 1
+
+    elif command == "get-temperature":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_temperature(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "get-sicp-info":
+        if len(sys.argv) < 4:
+            print("Error: get-sicp-info requires a label (sicp-version|platform-label|platform-version|custom-intent)")
+            sys.exit(1)
+
+        label_arg = sys.argv[3].lower()
+        label_map = {
+            "sicp-version": 0x00,
+            "version": 0x00,
+            "platform-label": 0x01,
+            "label": 0x01,
+            "platform-version": 0x02,
+            "custom-intent": 0x03,
+            "custom-intent-version": 0x03,
+        }
+
+        if label_arg not in label_map:
+            print("Error: Unknown label. Use sicp-version, platform-label, platform-version, custom-intent")
+            sys.exit(1)
+
+        label_code = label_map[label_arg]
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_sicp_info(mon_id, mon_ip, label_code) is not None:
+                success_count += 1
+
+    elif command == "get-model-info":
+        if len(sys.argv) < 4:
+            print("Error: get-model-info requires a label (model|firmware|build|android|hdmi|lan)")
+            sys.exit(1)
+
+        label_arg = sys.argv[3].lower()
+        model_map = {
+            "model": 0x00,
+            "model-number": 0x00,
+            "fw": 0x01,
+            "firmware": 0x01,
+            "firmware-version": 0x01,
+            "build": 0x02,
+            "build-date": 0x02,
+            "android": 0x03,
+            "android-fw": 0x03,
+            "hdmi": 0x04,
+            "hdmi-switch": 0x04,
+            "lan": 0x05,
+            "lan-fw": 0x05,
+            "hdmi2": 0x06,
+            "hdmi-switch2": 0x06,
+        }
+
+        if label_arg not in model_map:
+            print("Error: Unknown label. Use model, firmware, build, android, hdmi, lan, hdmi2")
+            sys.exit(1)
+
+        label_code = model_map[label_arg]
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_model_info(mon_id, mon_ip, label_code) is not None:
+                success_count += 1
+
+    elif command == "get-serial":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_serial_number(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "get-video-signal":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_video_signal_status(mon_id, mon_ip) is not None:
                 success_count += 1
 
     elif command == "get-volume":
