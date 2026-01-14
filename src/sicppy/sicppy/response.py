@@ -1,4 +1,4 @@
-from .messages import SICPCommand.COMMUNICATION_CONTROL, RESPONSE_ACK, RESPONSE_NAV, RESPONSE_NACK
+from .messages import SICPCommand, RESPONSE_ACK, RESPONSE_NAV, RESPONSE_NACK
 
 class SicpResponse:
     """Parse and represent a SICP response."""

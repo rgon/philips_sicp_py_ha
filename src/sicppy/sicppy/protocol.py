@@ -136,6 +136,9 @@ def _format_ip_parameter_value(parameter_code, value_bytes):
     return formatted, ascii_text, raw_hex
 
 class SICPProtocol:
+    def __init__(self, monitor_id=1) -> None:
+        self.monitor_id = monitor_id
+
     @abstractmethod
     def send_message(self, message, expect_data=False) -> SicpResponse | None:
         """Abstract method to send a SICP message to the display."""

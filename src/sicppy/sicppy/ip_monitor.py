@@ -6,7 +6,7 @@ from .response import SicpResponse
 from .protocol import SICPProtocol
 
 
-PORT = 5000
+DEFAULT_PORT = 5000
 TIMEOUT = 2
 
 class ChecksumOrFormatError(Exception):
@@ -22,10 +22,10 @@ class NetworkError(Exception):
     pass
 
 class SICPIPMonitor(SICPProtocol):
-    def __init__(self, ip:str, monitor_id=1) -> None:
-        super().__init__()
+    def __init__(self, ip:str, monitor_id=1, port=DEFAULT_PORT) -> None:
+        super().__init__(monitor_id=monitor_id)
         self.ip = ip
-        self.monitor_id = monitor_id
+        self.port = port
 
     def send_message(self, message, expect_data=False) -> SicpResponse | None:
         """
@@ -44,7 +44,7 @@ class SICPIPMonitor(SICPProtocol):
             response_data = None
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(TIMEOUT)
-                sock.connect((self.ip, PORT))
+                sock.connect((self.ip, self.port))
                 sock.sendall(message)
                 
                 # Receive response
