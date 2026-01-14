@@ -51,6 +51,8 @@ CMD_TEST_PATTERN_SET = 0x6D
 CMD_REMOTE_LOCK_SET = 0x1C
 CMD_REMOTE_LOCK_GET = 0x1D
 CMD_REMOTE_CONTROL_SIM = 0xFE
+CMD_POWER_ON_LOGO_SET = 0x3E
+CMD_POWER_ON_LOGO_GET = 0x3F
 CMD_GROUP_ID_SET = 0x5C
 CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
@@ -399,6 +401,18 @@ REMOTE_KEY_NAMES = {
     0xF5: 'format',
 }
 
+POWER_ON_LOGO_MODES = {
+    'off': 0x00,
+    'on': 0x01,
+    'user': 0x02,
+}
+
+POWER_ON_LOGO_MODE_NAMES = {
+    0x00: 'off',
+    0x01: 'on',
+    0x02: 'user',
+}
+
 POWER_SAVE_MODES = {
     'rgb-off-video-off': 0x00,
     'rgb-off-video-on': 0x01,
@@ -656,6 +670,27 @@ def build_remote_lock_set_message(monitor_id, state_code):
         GROUP_ID,
         CMD_REMOTE_LOCK_SET,
         state_code,
+        checksum,
+    ])
+
+
+def build_power_on_logo_get_message(monitor_id):
+    """Build SICP message to query power-on logo setting."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_GET, checksum])
+
+
+def build_power_on_logo_set_message(monitor_id, mode_code):
+    """Build SICP message to set power-on logo behavior."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_ON_LOGO_SET, mode_code)
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_POWER_ON_LOGO_SET,
+        mode_code,
         checksum,
     ])
 
@@ -1287,6 +1322,33 @@ def simulate_remote_key(monitor_id, ip, key_code):
     return response and response.is_ack
 
 
+def get_power_on_logo_mode(monitor_id, ip):
+    """Retrieve the power-on logo mode (off|on|user)."""
+    message = build_power_on_logo_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get power-on logo", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_POWER_ON_LOGO_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            mode_code = payload[0]
+            mode_name = POWER_ON_LOGO_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+            print(f"  Power-on logo: {mode_name}")
+            return mode_code
+
+    return None
+
+
+def set_power_on_logo_mode(monitor_id, ip, mode_code):
+    """Set the power-on logo mode (SICP 11.1)."""
+    message = build_power_on_logo_set_message(monitor_id, mode_code)
+    mode_name = POWER_ON_LOGO_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set power-on logo to {mode_name}")
+    return response and response.is_ack
+
+
 def get_power_save_mode(monitor_id, ip):
     """Retrieve the current power save mode."""
     message = build_power_save_get_message(monitor_id)
@@ -1736,6 +1798,8 @@ def print_usage():
     print("  get-remote-lock           Get remote control/keypad lock state")
     print("  set-remote-lock <mode>    Set remote lock (unlock-all|lock-all|...)")
     print("  remote-key <name>         Simulate remote control key press")
+    print("  get-power-on-logo         Get power-on logo mode")
+    print("  set-power-on-logo <mode>  Set power-on logo (off|on|user)")
     print("  get-power-save            Get power save mode")
     print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
     print("  get-smart-power           Get smart power level")
@@ -2102,6 +2166,39 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if simulate_remote_key(mon_id, mon_ip, key_code):
+                success_count += 1
+
+    elif command == "get-power-on-logo":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_power_on_logo_mode(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-power-on-logo":
+        if len(sys.argv) < 4:
+            print("Error: set-power-on-logo requires a mode name or numeric code")
+            print(f"Available modes: {', '.join(sorted(POWER_ON_LOGO_MODES.keys()))}")
+            sys.exit(1)
+
+        mode_arg_raw = sys.argv[3]
+        normalized = mode_arg_raw.lower().strip()
+        mode_code = None
+
+        if normalized in POWER_ON_LOGO_MODES:
+            mode_code = POWER_ON_LOGO_MODES[normalized]
+        else:
+            try:
+                parsed = int(mode_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown power-on logo mode. Use off|on|user or 0-255 code.")
+                sys.exit(1)
+
+            mode_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_power_on_logo_mode(mon_id, mon_ip, mode_code):
                 success_count += 1
 
     elif command == "get-power-save":
