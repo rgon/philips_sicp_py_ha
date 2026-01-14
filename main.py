@@ -46,6 +46,8 @@ CMD_AV_MUTE_SET = 0x7B
 CMD_PICTURE_STYLE_GET = 0x65
 CMD_PICTURE_STYLE_SET = 0x66
 CMD_MONITOR_ID_SET = 0x69
+CMD_TEST_PATTERN_GET = 0x6C
+CMD_TEST_PATTERN_SET = 0x6D
 CMD_GROUP_ID_SET = 0x5C
 CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
@@ -237,6 +239,40 @@ PICTURE_STYLES = {
 }
 
 PICTURE_STYLE_NAMES = {value: key for key, value in PICTURE_STYLES.items()}
+
+TEST_PATTERNS = {
+    'off': 0x00,
+    'white-100': 0x01,
+    'white': 0x01,
+    'red': 0x02,
+    'green': 0x03,
+    'blue': 0x04,
+    'black': 0x05,
+    'half-white-top': 0x06,
+    'half-white-bottom': 0x07,
+    'ramp': 0x08,
+    'white-12': 0x09,
+    'white-25': 0x0A,
+    'white-65': 0x0B,
+}
+
+TEST_PATTERN_NAMES = {
+    value: key for key, value in TEST_PATTERNS.items()
+    if key in {
+        'off',
+        'white-100',
+        'red',
+        'green',
+        'blue',
+        'black',
+        'half-white-top',
+        'half-white-bottom',
+        'ramp',
+        'white-12',
+        'white-25',
+        'white-65',
+    }
+}
 
 POWER_SAVE_MODES = {
     'rgb-off-video-off': 0x00,
@@ -455,6 +491,27 @@ def build_picture_style_set_message(monitor_id, style_code):
     msg_size = 0x06
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code, checksum])
+
+
+def build_test_pattern_get_message(monitor_id):
+    """Build SICP message to query the current internal test pattern."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_GET, checksum])
+
+
+def build_test_pattern_set_message(monitor_id, pattern_code):
+    """Build SICP message to set the internal test pattern."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_TEST_PATTERN_SET, pattern_code)
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_TEST_PATTERN_SET,
+        pattern_code,
+        checksum,
+    ])
 
 
 def build_group_id_get_message(monitor_id):
@@ -999,6 +1056,33 @@ def set_picture_style(monitor_id, ip, style_code):
     return response and response.is_ack
 
 
+def get_test_pattern(monitor_id, ip):
+    """Retrieve the current internal test pattern (SICP 8.24)."""
+    message = build_test_pattern_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get test pattern", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_TEST_PATTERN_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            pattern_code = payload[0]
+            pattern_name = TEST_PATTERN_NAMES.get(pattern_code, f"0x{pattern_code:02X}")
+            print(f"  Test pattern: {pattern_name}")
+            return pattern_code
+
+    return None
+
+
+def set_test_pattern(monitor_id, ip, pattern_code):
+    """Enable an internal test pattern (unsupported on some BDL models)."""
+    message = build_test_pattern_set_message(monitor_id, pattern_code)
+    pattern_name = TEST_PATTERN_NAMES.get(pattern_code, f"0x{pattern_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set test pattern to {pattern_name}")
+    return response and response.is_ack
+
+
 def get_power_save_mode(monitor_id, ip):
     """Retrieve the current power save mode."""
     message = build_power_save_get_message(monitor_id)
@@ -1443,6 +1527,8 @@ def print_usage():
     print("  get-video-signal          Check if active input has signal")
     print("  get-picture-style         Get current picture style")
     print("  set-picture-style <name>  Set picture style (highbright, srgb, ...)")
+    print("  get-test-pattern          Get current internal test pattern")
+    print("  set-test-pattern <name>   Set internal test pattern (off|white|red|...)")
     print("  get-power-save            Get power save mode")
     print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
     print("  get-smart-power           Get smart power level")
@@ -1703,6 +1789,40 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if set_picture_style(mon_id, mon_ip, style_code):
+                success_count += 1
+
+    elif command == "get-test-pattern":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_test_pattern(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-test-pattern":
+        if len(sys.argv) < 4:
+            print("Error: set-test-pattern requires a pattern name or numeric code")
+            print(f"Available patterns: {', '.join(sorted(set(TEST_PATTERNS.keys())))}")
+            sys.exit(1)
+
+        pattern_arg_raw = sys.argv[3]
+        normalized = pattern_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
+        pattern_code = None
+
+        if normalized in TEST_PATTERNS:
+            pattern_code = TEST_PATTERNS[normalized]
+        else:
+            try:
+                parsed = int(pattern_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown test pattern. Use a known name or 0-255 code.")
+                print(f"Available patterns: {', '.join(sorted(set(TEST_PATTERNS.keys())))}")
+                sys.exit(1)
+
+            pattern_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_test_pattern(mon_id, mon_ip, pattern_code):
                 success_count += 1
 
     elif command == "get-power-save":
