@@ -117,12 +117,12 @@ def main():
     
     if command == "on": 
         for monitor in monitor_ids: 
-            if monitor.power_control(monitor.monitor_id, True):
+            if monitor.set_power(monitor.monitor_id, True):
                 success_count += 1
     
     elif command == "off": 
         for monitor in monitor_ids:
-            if monitor.power_control(monitor.monitor_id, False):
+            if monitor.set_power(monitor.monitor_id, False):
                 success_count += 1
 
     elif command == "set-power":
@@ -140,17 +140,17 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.power_control(monitor.monitor_id, desired_on):
+            if monitor.set_power(monitor.monitor_id, desired_on):
                 success_count += 1
     
     elif command == "backlight-on":
         for monitor in monitor_ids:
-            if monitor.backlight_control(monitor.monitor_id, True):
+            if monitor.set_backlight(monitor.monitor_id, True):
                 success_count += 1
     
     elif command == "backlight-off": 
         for monitor in monitor_ids:
-            if monitor.backlight_control(monitor.monitor_id, False):
+            if monitor.set_backlight(monitor.monitor_id, False):
                 success_count += 1
     
     elif command == "get-backlight":
@@ -160,12 +160,12 @@ def main():
     
     elif command == "4k-on": 
         for monitor in monitor_ids:
-            if monitor.android_4k_control(monitor.monitor_id, True):
+            if monitor.set_android_4k_state(monitor.monitor_id, True):
                 success_count += 1
     
     elif command == "4k-off":
         for monitor in monitor_ids:
-            if monitor.android_4k_control(monitor.monitor_id, False):
+            if monitor.set_android_4k_state(monitor.monitor_id, False):
                 success_count += 1
     
     elif command == "get-4k":
@@ -868,12 +868,12 @@ def main():
 
     elif command == "wol-on":
         for monitor in monitor_ids:
-            if monitor.wol_control(monitor.monitor_id, True):
+            if monitor.set_wol(monitor.monitor_id, True):
                 success_count += 1
 
     elif command == "wol-off":
         for monitor in monitor_ids:
-            if monitor.wol_control(monitor.monitor_id, False):
+            if monitor.set_wol(monitor.monitor_id, False):
                 success_count += 1
 
     elif command == "get-wol":

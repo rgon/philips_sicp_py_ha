@@ -71,7 +71,7 @@ class SICPProtocol:
         """Abstract method to send a SICP message to the display."""
         pass
 
-    def power_control(self, monitor_id, power_on):
+    def set_power(self, monitor_id, power_on):
         """Control display power state."""
         message = build_power_message(monitor_id, power_on)
         action_description = "Screen ON" if power_on else "Screen OFF"
@@ -665,7 +665,7 @@ class SICPProtocol:
         return False
 
 
-    def backlight_control(self, monitor_id, backlight_on):
+    def set_backlight(self, monitor_id, backlight_on):
         """Control display backlight state."""
         message = build_backlight_set_message(monitor_id, backlight_on)
         action = "Backlight ON" if backlight_on else "Backlight OFF"
@@ -690,7 +690,7 @@ class SICPProtocol:
         return None
 
 
-    def android_4k_control(self, monitor_id, enable_4k):
+    def set_android_4k_state(self, monitor_id, enable_4k):
         """
         Control Android 4K mode.
         
@@ -723,7 +723,7 @@ class SICPProtocol:
         return None
 
 
-    def wol_control(self, monitor_id, enable_wol):
+    def set_wol(self, monitor_id, enable_wol):
         """Control Wake on LAN state."""
         message = build_wol_set_message(monitor_id, enable_wol)
         action = "Wake on LAN ON" if enable_wol else "Wake on LAN OFF"
