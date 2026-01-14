@@ -30,77 +30,6 @@ from .response import SicpResponse
 
 logger = logging.getLogger(__name__)
 
-def _format_color_temperature_label(label):
-    condensed = label.replace('-', '')
-    if condensed.isdigit():
-        return f"{condensed}k"
-    if condensed.endswith('k') and condensed[:-1].isdigit():
-        return f"{condensed[:-1]}k"
-    if condensed.startswith('k') and condensed[1:].isdigit():
-        return f"{condensed[1:]}k"
-    return label
-
-
-def _normalize_enum_name(enum_cls, raw_name):
-    label = raw_name.lower().replace('_', '-')
-    if enum_cls is ColorTemperatureMode:
-        return _format_color_temperature_label(label)
-    return label
-
-
-def _normalize_enum_token(enum_cls, token):
-    label = str(token).lower().replace('_', '-').replace(' ', '-').strip()
-    if enum_cls is ColorTemperatureMode:
-        return _format_color_temperature_label(label)
-    return label
-
-
-def _enum_label(enum_cls, value):
-    """Return kebab-case label for enum value or fallback to hex."""
-    try:
-        member = enum_cls(value)
-    except ValueError:
-        if isinstance(value, int):
-            return f"0x{value:02X}"
-        return str(value)
-
-    return _normalize_enum_name(enum_cls, member.name)
-
-
-def _enum_choice_names(enum_cls):
-    labels = []
-    seen = set()
-    for name in enum_cls.__members__:
-        label = _normalize_enum_name(enum_cls, name)
-        if label not in seen:
-            labels.append(label)
-            seen.add(label)
-    return sorted(labels)
-
-
-def _parse_enum_token(enum_cls, token):
-    if isinstance(token, enum_cls):
-        return token
-
-    if isinstance(token, int):
-        try:
-            return enum_cls(token)
-        except ValueError as exc:
-            raise ValueError from exc
-
-    normalized = _normalize_enum_token(enum_cls, token)
-
-    for name, member in enum_cls.__members__.items():
-        if _normalize_enum_name(enum_cls, name) == normalized:
-            return member
-
-    try:
-        value = int(str(token), 0)
-    except ValueError as exc:
-        raise ValueError from exc
-
-    return enum_cls(value)
-
 def _coerce_kelvin_to_step_value(kelvin_value):
     try:
         kelvin_int = int(kelvin_value)
@@ -186,8 +115,7 @@ class SICPProtocol:
     def set_cold_start_power_state(self, state_code: ColdStartPowerState):
         """Set cold-start power behavior."""
         message = construct_message(self.monitor_id, SICPCommand.COLD_START_SET, state_code.value)
-        label = _enum_label(ColdStartPowerState, state_code.value)
-        action = f"Set cold-start power state to {label}"
+        action = f"Set cold-start power state to {state_code}"
         logger.debug(f"Sending cold-start power state message: {action} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -280,8 +208,7 @@ class SICPProtocol:
     def set_picture_style(self, style_code: PictureStyle):
         """Set the picture style to the provided code."""
         message = construct_message(self.monitor_id, SICPCommand.PICTURE_STYLE_SET, style_code.value)
-        style_name = _enum_label(PictureStyle, style_code.value)
-        logger.debug(f"Set picture style to {style_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Set picture style to {style_code} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -314,8 +241,7 @@ class SICPProtocol:
     def set_color_temperature_mode(self, mode_code: ColorTemperatureMode):
         """Set the color temperature preset (SICP 8.11)."""
         message = construct_message(self.monitor_id, SICPCommand.COLOR_TEMPERATURE_SET, mode_code.value)
-        label = _enum_label(ColorTemperatureMode, mode_code.value)
-        logger.debug(f"Sending set color temperature to {label} to Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set color temperature to {mode_code} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -381,8 +307,7 @@ class SICPProtocol:
     def set_test_pattern(self, pattern_code: TestPattern):
         """Enable an internal test pattern (unsupported on some BDL models)."""
         message = construct_message(self.monitor_id, SICPCommand.TEST_PATTERN_SET, pattern_code.value)
-        pattern_name = _enum_label(TestPattern, pattern_code.value)
-        logger.debug(f"Sending set test pattern to {pattern_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set test pattern to {pattern_code} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -404,8 +329,7 @@ class SICPProtocol:
     def set_remote_lock_state(self, state_code: RemoteLockState):
         """Set the remote control/keypad lock mode."""
         message = construct_message(self.monitor_id, SICPCommand.REMOTE_LOCK_SET, state_code.value)
-        state_name = _enum_label(RemoteLockState, state_code.value)
-        logger.debug(f"Sending set remote lock to {state_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set remote lock to {state_code} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -414,8 +338,7 @@ class SICPProtocol:
         """Simulate a button press on the remote control (SICP 7.2)."""
         reserved = 0x00
         message = construct_message(self.monitor_id, SICPCommand.REMOTE_CONTROL_SIM, key_code.value, reserved)
-        key_name = _enum_label(RemoteKey, key_code.value)
-        logger.debug(f"Sending simulate remote key {key_name} to Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending simulate remote key {key_code} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -437,8 +360,7 @@ class SICPProtocol:
     def set_power_on_logo_mode(self, mode: PowerOnLogoMode):
         """Set the power-on logo mode (SICP 11.1)."""
         message = construct_message(self.monitor_id, SICPCommand.POWER_ON_LOGO_SET, mode.value)
-        mode_name = _enum_label(PowerOnLogoMode, mode.value)
-        logger.debug(f"Sending set power-on logo to {mode_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set power-on logo to {mode} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -485,8 +407,7 @@ class SICPProtocol:
             raise ValueError("Auto signal mode must be between 0 and 5")
 
         message = construct_message(self.monitor_id, SICPCommand.AUTO_SIGNAL_SET, mode.value)
-        mode_name = _enum_label(AutoSignalMode, mode.value)
-        logger.debug(f"Sending set auto signal detection to {mode_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set auto signal detection to {mode} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -508,8 +429,7 @@ class SICPProtocol:
     def set_power_save_mode(self, mode: PowerSaveMode):
         """Set the display power save mode."""
         message = construct_message(self.monitor_id, SICPCommand.POWER_SAVE_SET, mode.value)
-        mode_name = _enum_label(PowerSaveMode, mode.value)
-        logger.debug(f"Sending set power save mode to {mode_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set power save mode to {mode} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -531,8 +451,7 @@ class SICPProtocol:
     def set_smart_power_level(self, level: SmartPowerLevel):
         """Set the smart power level."""
         message = construct_message(self.monitor_id, SICPCommand.SMART_POWER_SET, level.value)
-        level_name = _enum_label(SmartPowerLevel, level.value)
-        logger.debug(f"Sending set smart power level to {level_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set smart power level to {level} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -554,8 +473,7 @@ class SICPProtocol:
     def set_apm_mode(self, mode: ApmMode):
         """Set the advanced power management mode."""
         message = construct_message(self.monitor_id, SICPCommand.APM_SET, mode.value)
-        mode_name = _enum_label(ApmMode, mode.value)
-        logger.debug(f"Sending set advanced power management to {mode_name} for Monitor ID {self.monitor_id}")
+        logger.debug(f"Sending set advanced power management to {mode} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
 
@@ -740,25 +658,13 @@ class SICPProtocol:
 
     def get_ip_parameter(
         self,
-        parameter_name: IPParameterCode,
-        value_type_name: IPParameterValueType = IPParameterValueType.CURRENT,
+        parameter: IPParameterCode,
+        value_type: IPParameterValueType = IPParameterValueType.CURRENT,
     ) -> str:
         """Get IP parameter or MAC address information."""
-        try:
-            parameter_member = _parse_enum_token(IPParameterCode, parameter_name)
-        except ValueError as exc:
-            raise ValueError(
-                f"Unknown IP parameter '{parameter_name}'. Valid options: {', '.join(_enum_choice_names(IPParameterCode))}"
-            ) from exc
 
-        try:
-            value_type_member = _parse_enum_token(IPParameterValueType, value_type_name)
-        except ValueError as exc:
-            options = '|'.join(_enum_choice_names(IPParameterValueType))
-            raise ValueError(f"Unknown value type '{value_type_name}' (use {options})") from exc
-
-        parameter_code = parameter_member.value
-        value_type_code = value_type_member.value
+        parameter_code = parameter.value
+        value_type_code = value_type.value
 
         message = construct_message(
             self.monitor_id,
@@ -766,7 +672,7 @@ class SICPProtocol:
             parameter_code,
             value_type_code,
         )
-        action = f"Get {_enum_label(IPParameterCode, parameter_code).upper()} ({_enum_label(IPParameterValueType, value_type_code)})"
+        action = f"Get {parameter} ({value_type})"
         logger.debug(f"Sending IP parameter get message: {action} to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
         if not response or not response.data_payload:
@@ -800,7 +706,7 @@ class SICPProtocol:
         )
 
         playlist_info = f" (playlist {playlist})" if playlist > 0 else ""
-        action = f"Set input to {_enum_label(InputSource, input_source.value).upper()}{playlist_info}"
+        action = f"Set input to {input_source}{playlist_info}"
         logger.debug(f"Sending set input source message: {action} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
