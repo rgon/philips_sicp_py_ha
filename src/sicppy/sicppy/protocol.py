@@ -2,29 +2,29 @@ import string
 from abc import abstractmethod
 import logging
 
-from .messages import build_power_message, build_power_get_message, PowerState, build_cold_start_get_message, \
-    ColdStartPowerState, build_cold_start_set_message, build_temperature_get_message, SICPCommand, \
-    build_sicp_info_get_message, SICP_INFO_LABELS, build_model_info_get_message, MODEL_INFO_LABELS, \
-    build_serial_get_message, build_video_signal_get_message, \
-    build_picture_style_get_message, PictureStyle, build_picture_style_set_message, \
-    build_video_parameters_set_message, build_video_parameters_get_message, \
-    build_color_temperature_set_message, ColorTemperatureMode, \
-    build_color_temperature_get_message, build_color_temperature_fine_set_message, \
-    build_color_temperature_fine_get_message, build_test_pattern_get_message, \
-    TestPattern, build_test_pattern_set_message, build_remote_lock_get_message, \
-    RemoteLockState, build_remote_lock_set_message, build_remote_key_simulation_message, \
-    RemoteKey, build_power_on_logo_get_message, PowerOnLogoMode, build_power_on_logo_set_message, \
-    build_osd_info_get_message, build_osd_info_set_message, build_auto_signal_get_message, AutoSignalMode, build_auto_signal_set_message, \
-    build_power_save_get_message, PowerSaveMode, build_power_save_set_message, \
-    build_smart_power_get_message, SmartPowerLevel, build_smart_power_set_message, \
-    build_apm_get_message, ApmMode, build_apm_set_message, build_group_id_get_message, \
-    build_group_id_set_message, build_monitor_id_set_message, build_backlight_set_message, \
-    build_backlight_get_message, build_android_4k_set_message, \
-    build_android_4k_get_message, build_wol_set_message, build_wol_get_message, \
-    build_volume_set_message, build_volume_get_message, build_mute_get_message, build_mute_set_message, \
-    build_av_mute_get_message, build_av_mute_set_message, \
-    build_ip_parameter_get_message, IPParameterCode, IPParameterValueType, \
-    build_input_source_message, build_get_input_source_message, InputSource
+from .messages import (
+    construct_message,
+    SICPCommand,
+    build_video_parameters_set_message,
+    build_volume_set_message,
+    SICP_INFO_LABELS,
+    MODEL_INFO_LABELS,
+    PowerState,
+    ColdStartPowerState,
+    PictureStyle,
+    ColorTemperatureMode,
+    TestPattern,
+    RemoteLockState,
+    RemoteKey,
+    PowerOnLogoMode,
+    AutoSignalMode,
+    PowerSaveMode,
+    SmartPowerLevel,
+    ApmMode,
+    IPParameterCode,
+    IPParameterValueType,
+    InputSource,
+)
 
 from .response import SicpResponse
 
@@ -146,7 +146,9 @@ class SICPProtocol:
 
     def set_power(self, monitor_id, power_on):
         """Control display power state."""
-        message = build_power_message(monitor_id, power_on)
+        param = PowerState.POWER_ON if power_on else PowerState.POWER_OFF
+        message = construct_message(monitor_id, SICPCommand.POWER_STATE_SET, param)
+
         action_description = "Screen ON" if power_on else "Screen OFF"
         logger.debug(f"Sending power control message: {action_description} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -155,7 +157,7 @@ class SICPProtocol:
 
     def get_power_state(self, monitor_id):
         """Query current power state (returns 0x01 off, 0x02 on)."""
-        message = build_power_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.POWER_STATE_GET)
         logger.debug(f"Get power state for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -174,7 +176,7 @@ class SICPProtocol:
 
     def get_cold_start_power_state(self, monitor_id):
         """Query cold-start power behavior (0x00 off, 0x01 forced on, 0x02 last status)."""
-        message = build_cold_start_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.COLD_START_GET)
         logger.debug(f"Get cold-start power state for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -189,7 +191,7 @@ class SICPProtocol:
 
     def set_cold_start_power_state(self, monitor_id, state_code):
         """Set cold-start power behavior."""
-        message = build_cold_start_set_message(monitor_id, state_code)
+        message = construct_message(monitor_id, SICPCommand.COLD_START_SET, state_code)
         label = _enum_label(ColdStartPowerState, state_code)
         action = f"Set cold-start power state to {label}"
         logger.debug(f"Sending cold-start power state message: {action} to Monitor ID {monitor_id}")
@@ -199,7 +201,7 @@ class SICPProtocol:
 
     def get_temperature(self, monitor_id):
         """Read temperature sensors (returns list of Celsius values)."""
-        message = build_temperature_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.TEMPERATURE_GET)
         logger.debug(f"Get temperature for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -230,7 +232,7 @@ class SICPProtocol:
 
     def get_sicp_info(self, monitor_id, label_code):
         """Retrieve SICP version/platform info text for the requested label code."""
-        message = build_sicp_info_get_message(monitor_id, label_code)
+        message = construct_message(monitor_id, SICPCommand.SICP_INFO_GET, label_code)
         label = SICP_INFO_LABELS.get(label_code, f"0x{label_code:02X}")
         logger.debug(f"Get SICP info ({label}) for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -249,7 +251,7 @@ class SICPProtocol:
 
     def get_model_info(self, monitor_id, label_code):
         """Retrieve model/firmware/build information for the given label code."""
-        message = build_model_info_get_message(monitor_id, label_code)
+        message = construct_message(monitor_id, SICPCommand.MODEL_INFO_GET, label_code)
         label = MODEL_INFO_LABELS.get(label_code, f"0x{label_code:02X}")
         logger.debug(f"Get model info ({label}) for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -268,7 +270,7 @@ class SICPProtocol:
 
     def get_serial_number(self, monitor_id):
         """Fetch the 14-character display serial number."""
-        message = build_serial_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.SERIAL_GET)
         logger.debug(f"Get serial number for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -287,7 +289,7 @@ class SICPProtocol:
 
     def get_video_signal_status(self, monitor_id):
         """Determine if a video signal is present on the active input."""
-        message = build_video_signal_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.VIDEO_SIGNAL_GET)
         logger.debug(f"Get video signal status for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -307,7 +309,7 @@ class SICPProtocol:
 
     def get_picture_style(self, monitor_id):
         """Retrieve the current picture style value."""
-        message = build_picture_style_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.PICTURE_STYLE_GET)
         logger.debug(f"Get picture style for Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -327,7 +329,7 @@ class SICPProtocol:
 
     def set_picture_style(self, monitor_id, style_code):
         """Set the picture style to the provided code."""
-        message = build_picture_style_set_message(monitor_id, style_code)
+        message = construct_message(monitor_id, SICPCommand.PICTURE_STYLE_SET, style_code)
         style_name = _enum_label(PictureStyle, style_code)
         logger.debug(f"Set picture style to {style_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -352,7 +354,7 @@ class SICPProtocol:
 
     def get_brightness_level(self, monitor_id):
         """Retrieve current brightness percentage via video parameters (SICP 8.10)."""
-        message = build_video_parameters_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.VIDEO_PARAMETERS_GET)
         logger.debug(f"Sending get brightness to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -370,7 +372,7 @@ class SICPProtocol:
 
     def set_color_temperature_mode(self, monitor_id, mode_code):
         """Set the color temperature preset (SICP 8.11)."""
-        message = build_color_temperature_set_message(monitor_id, mode_code)
+        message = construct_message(monitor_id, SICPCommand.COLOR_TEMPERATURE_SET, mode_code)
         label = _enum_label(ColorTemperatureMode, mode_code)
         logger.debug(f"Sending set color temperature to {label} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -379,7 +381,7 @@ class SICPProtocol:
 
     def get_color_temperature_mode(self, monitor_id):
         """Retrieve the active color temperature preset (SICP 8.11)."""
-        message = build_color_temperature_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.COLOR_TEMPERATURE_GET)
         logger.debug(f"Sending get color temperature to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -406,7 +408,7 @@ class SICPProtocol:
             print("  Failed to set base color temperature to User 2; precise adjustment skipped")
             return False
 
-        message = build_color_temperature_fine_set_message(monitor_id, step_value)
+        message = construct_message(monitor_id, SICPCommand.COLOR_TEMPERATURE_FINE_SET, step_value)
         action = f"Set precise color temperature to {resolved_kelvin}K"
         logger.debug(f"Sending set precise color temperature message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -415,7 +417,7 @@ class SICPProtocol:
 
     def get_precise_color_temperature(self, monitor_id):
         """Read the current User 2 color temperature in 100K steps (SICP 8.12)."""
-        message = build_color_temperature_fine_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.COLOR_TEMPERATURE_FINE_GET)
         logger.debug(f"Sending get precise color temperature to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -439,7 +441,7 @@ class SICPProtocol:
 
     def get_test_pattern(self, monitor_id):
         """Retrieve the current internal test pattern (SICP 8.24)."""
-        message = build_test_pattern_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.TEST_PATTERN_GET)
         logger.debug(f"Sending get test pattern to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -459,7 +461,7 @@ class SICPProtocol:
 
     def set_test_pattern(self, monitor_id, pattern_code):
         """Enable an internal test pattern (unsupported on some BDL models)."""
-        message = build_test_pattern_set_message(monitor_id, pattern_code)
+        message = construct_message(monitor_id, SICPCommand.TEST_PATTERN_SET, pattern_code)
         pattern_name = _enum_label(TestPattern, pattern_code)
         logger.debug(f"Sending set test pattern to {pattern_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -468,7 +470,7 @@ class SICPProtocol:
 
     def get_remote_lock_state(self, monitor_id):
         """Retrieve the current remote control/keypad lock mode."""
-        message = build_remote_lock_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.REMOTE_LOCK_GET)
         logger.debug(f"Sending get remote lock state to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -488,7 +490,7 @@ class SICPProtocol:
 
     def set_remote_lock_state(self, monitor_id, state_code):
         """Set the remote control/keypad lock mode."""
-        message = build_remote_lock_set_message(monitor_id, state_code)
+        message = construct_message(monitor_id, SICPCommand.REMOTE_LOCK_SET, state_code)
         state_name = _enum_label(RemoteLockState, state_code)
         logger.debug(f"Sending set remote lock to {state_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -497,7 +499,8 @@ class SICPProtocol:
 
     def simulate_remote_key(self, monitor_id, key_code):
         """Simulate a button press on the remote control (SICP 7.2)."""
-        message = build_remote_key_simulation_message(monitor_id, key_code)
+        reserved = 0x00
+        message = construct_message(monitor_id, SICPCommand.REMOTE_CONTROL_SIM, key_code, reserved)
         key_name = _enum_label(RemoteKey, key_code)
         logger.debug(f"Sending simulate remote key {key_name} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -506,7 +509,7 @@ class SICPProtocol:
 
     def get_power_on_logo_mode(self, monitor_id):
         """Retrieve the power-on logo mode (off|on|user)."""
-        message = build_power_on_logo_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.POWER_ON_LOGO_GET)
         logger.debug(f"Sending get power-on logo to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -526,7 +529,7 @@ class SICPProtocol:
 
     def set_power_on_logo_mode(self, monitor_id, mode_code):
         """Set the power-on logo mode (SICP 11.1)."""
-        message = build_power_on_logo_set_message(monitor_id, mode_code)
+        message = construct_message(monitor_id, SICPCommand.POWER_ON_LOGO_SET, mode_code)
         mode_name = _enum_label(PowerOnLogoMode, mode_code)
         logger.debug(f"Sending set power-on logo to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -535,7 +538,7 @@ class SICPProtocol:
 
     def get_osd_info_timeout(self, monitor_id):
         """Retrieve the information OSD timeout (0=off, 1-60 seconds)."""
-        message = build_osd_info_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.OSD_INFO_GET)
         logger.debug(f"Sending get information OSD to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -560,7 +563,7 @@ class SICPProtocol:
         if not (0 <= timeout_code <= 0x3C):
             raise ValueError("OSD timeout must be 0 (off) or between 1 and 60 seconds")
 
-        message = build_osd_info_set_message(monitor_id, timeout_code)
+        message = construct_message(monitor_id, SICPCommand.OSD_INFO_SET, timeout_code)
         label = "off" if timeout_code == 0 else f"{timeout_code} sec"
         logger.debug(f"Sending set information OSD to {label} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -569,7 +572,7 @@ class SICPProtocol:
 
     def get_auto_signal_mode(self, monitor_id):
         """Retrieve the auto signal detection mode (SICP 5.4)."""
-        message = build_auto_signal_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.AUTO_SIGNAL_GET)
         logger.debug(f"Sending get auto signal detection to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -592,7 +595,7 @@ class SICPProtocol:
         if not (0 <= mode_code <= 0x05):
             raise ValueError("Auto signal mode must be between 0 and 5")
 
-        message = build_auto_signal_set_message(monitor_id, mode_code)
+        message = construct_message(monitor_id, SICPCommand.AUTO_SIGNAL_SET, mode_code)
         mode_name = _enum_label(AutoSignalMode, mode_code)
         logger.debug(f"Sending set auto signal detection to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -601,7 +604,7 @@ class SICPProtocol:
 
     def get_power_save_mode(self, monitor_id):
         """Retrieve the current power save mode."""
-        message = build_power_save_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.POWER_SAVE_GET)
         logger.debug(f"Sending get power save mode to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -621,7 +624,7 @@ class SICPProtocol:
 
     def set_power_save_mode(self, monitor_id, mode_code):
         """Set the display power save mode."""
-        message = build_power_save_set_message(monitor_id, mode_code)
+        message = construct_message(monitor_id, SICPCommand.POWER_SAVE_SET, mode_code)
         mode_name = _enum_label(PowerSaveMode, mode_code)
         logger.debug(f"Sending set power save mode to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -630,7 +633,7 @@ class SICPProtocol:
 
     def get_smart_power_level(self, monitor_id):
         """Retrieve the current smart power level."""
-        message = build_smart_power_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.SMART_POWER_GET)
         logger.debug(f"Sending get smart power level to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -650,7 +653,7 @@ class SICPProtocol:
 
     def set_smart_power_level(self, monitor_id, level_code):
         """Set the smart power level."""
-        message = build_smart_power_set_message(monitor_id, level_code)
+        message = construct_message(monitor_id, SICPCommand.SMART_POWER_SET, level_code)
         level_name = _enum_label(SmartPowerLevel, level_code)
         logger.debug(f"Sending set smart power level to {level_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -659,7 +662,7 @@ class SICPProtocol:
 
     def get_apm_mode(self, monitor_id):
         """Retrieve the current advanced power management mode."""
-        message = build_apm_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.APM_GET)
         logger.debug(f"Sending get advanced power management to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -679,7 +682,7 @@ class SICPProtocol:
 
     def set_apm_mode(self, monitor_id, mode_code):
         """Set the advanced power management mode."""
-        message = build_apm_set_message(monitor_id, mode_code)
+        message = construct_message(monitor_id, SICPCommand.APM_SET, mode_code)
         mode_name = _enum_label(ApmMode, mode_code)
         logger.debug(f"Sending set advanced power management to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -688,7 +691,7 @@ class SICPProtocol:
 
     def get_group_id(self, monitor_id):
         """Retrieve the current group ID (1-254, or 0xFF for off)."""
-        message = build_group_id_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.GROUP_ID_GET)
         logger.debug(f"Sending get group ID to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -711,7 +714,7 @@ class SICPProtocol:
         if not ((1 <= group_value <= 0xFE) or group_value == 0xFF):
             raise ValueError("Group ID must be 1-254 or 0xFF for off")
 
-        message = build_group_id_set_message(monitor_id, group_value)
+        message = construct_message(monitor_id, SICPCommand.GROUP_ID_SET, group_value)
         label = "off" if group_value == 0xFF else str(group_value)
         logger.debug(f"Sending set group ID to {label} for Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -723,7 +726,7 @@ class SICPProtocol:
         if not 1 <= new_monitor_id <= 0xFF:
             raise ValueError("Monitor ID must be between 1 and 255")
 
-        message = build_monitor_id_set_message(monitor_id, new_monitor_id)
+        message = construct_message(monitor_id, SICPCommand.MONITOR_ID_SET, new_monitor_id)
         logger.debug(f"Sending set monitor ID to {new_monitor_id} for Monitor ID {monitor_id}")
         response = self.send_message(message)
 
@@ -736,7 +739,7 @@ class SICPProtocol:
 
     def set_backlight(self, monitor_id, backlight_on):
         """Control display backlight state."""
-        message = build_backlight_set_message(monitor_id, backlight_on)
+        message = construct_message(monitor_id, SICPCommand.BACKLIGHT_SET, 0x01 if backlight_on else 0x00)
         action = "Backlight ON" if backlight_on else "Backlight OFF"
         logger.debug(f"Sending backlight control message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -745,7 +748,7 @@ class SICPProtocol:
 
     def get_backlight_state(self, monitor_id):
         """Get current display backlight state."""
-        message = build_backlight_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.BACKLIGHT_GET)
         logger.debug(f"Sending get backlight state to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
         
@@ -765,7 +768,7 @@ class SICPProtocol:
         
         Available from SICP 2.11+ with displays that support this feature.
         """
-        message = build_android_4k_set_message(monitor_id, enable_4k)
+        message = construct_message(monitor_id, SICPCommand.ANDROID_4K_SET, 0x01 if enable_4k else 0x00)
         action = "Android 4K ENABLED" if enable_4k else "Android 4K DISABLED"
         logger.debug(f"Sending Android 4K control message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -778,7 +781,7 @@ class SICPProtocol:
         
         Available from SICP 2.11+ with displays that support this feature. 
         """
-        message = build_android_4k_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.ANDROID_4K_GET)
         logger.debug(f"Sending get Android 4K state to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
         
@@ -794,7 +797,7 @@ class SICPProtocol:
 
     def set_wol(self, monitor_id, enable_wol):
         """Control Wake on LAN state."""
-        message = build_wol_set_message(monitor_id, enable_wol)
+        message = construct_message(monitor_id, SICPCommand.WOL_SET, 0x01 if enable_wol else 0x00)
         action = "Wake on LAN ON" if enable_wol else "Wake on LAN OFF"
         logger.debug(f"Sending set Wake on LAN message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -803,7 +806,7 @@ class SICPProtocol:
 
     def get_wake_on_lan(self, monitor_id):
         """Retrieve the Wake on LAN (WOL) setting (0x00 off, 0x01 on)."""
-        message = build_wol_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.WOL_GET)
         logger.debug(f"Sending get Wake on LAN state to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -843,7 +846,7 @@ class SICPProtocol:
 
     def get_volume(self, monitor_id):
         """Get current speaker/audio-out volume levels."""
-        message = build_volume_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.VOLUME_GET)
         logger.debug(f"Sending get volume to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -865,7 +868,7 @@ class SICPProtocol:
 
     def set_mute(self, monitor_id, mute_on):
         """Set mute state for both speaker and audio-out."""
-        message = build_mute_set_message(monitor_id, mute_on)
+        message = construct_message(monitor_id, SICPCommand.MUTE_SET, 0x01 if mute_on else 0x00)
         action = "Mute ON" if mute_on else "Mute OFF"
         logger.debug(f"Sending set mute message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -874,7 +877,7 @@ class SICPProtocol:
 
     def get_mute_status(self, monitor_id):
         """Get mute status."""
-        message = build_mute_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.MUTE_GET)
         logger.debug(f"Sending get mute status to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -888,7 +891,7 @@ class SICPProtocol:
 
     def set_av_mute(self, monitor_id, mute_on):
         """Enable or disable A/V mute (backlight, audio, touch)."""
-        message = build_av_mute_set_message(monitor_id, mute_on)
+        message = construct_message(monitor_id, SICPCommand.AV_MUTE_SET, 0x01 if mute_on else 0x00)
         action = "A/V Mute ON" if mute_on else "A/V Mute OFF"
         logger.debug(f"Sending set A/V mute message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -897,7 +900,7 @@ class SICPProtocol:
 
     def get_av_mute_status(self, monitor_id):
         """Retrieve current A/V mute state."""
-        message = build_av_mute_get_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.AV_MUTE_GET)
         logger.debug(f"Sending get A/V mute to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -932,7 +935,12 @@ class SICPProtocol:
         parameter_code = parameter_member.value
         value_type_code = value_type_member.value
 
-        message = build_ip_parameter_get_message(monitor_id, parameter_code, value_type_code)
+        message = construct_message(
+            monitor_id,
+            SICPCommand.IP_PARAMETER_GET,
+            parameter_code,
+            value_type_code,
+        )
         action = f"Get {_enum_label(IPParameterCode, parameter_code).upper()} ({_enum_label(IPParameterValueType, value_type_code)})"
         logger.debug(f"Sending IP parameter get message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -964,7 +972,7 @@ class SICPProtocol:
 
         return formatted
 
-    def set_input_source(self, monitor_id, input_source_name, playlist=0):
+    def set_input_source(self, monitor_id, input_source_name, playlist=0, osd_style=1, effect_duration=0):
         """Set display input source."""
         try:
             input_member = _parse_enum_token(InputSource, input_source_name)
@@ -974,8 +982,15 @@ class SICPProtocol:
             return False
 
         input_code = input_member.value
-        message = build_input_source_message(monitor_id, input_code, playlist=playlist)
-        
+        message = construct_message(
+            monitor_id,
+            SICPCommand.INPUT_SOURCE_SET,
+            input_code,
+            playlist,
+            osd_style,
+            effect_duration,
+        )
+
         playlist_info = f" (playlist {playlist})" if playlist > 0 else ""
         action = f"Set input to {_enum_label(InputSource, input_code).upper()}{playlist_info}"
         logger.debug(f"Sending set input source message: {action} to Monitor ID {monitor_id}")
@@ -994,7 +1009,7 @@ class SICPProtocol:
         DATA[3] = OSD Style
         DATA[4] = Effect duration
         """
-        message = build_get_input_source_message(monitor_id)
+        message = construct_message(monitor_id, SICPCommand.CURRENT_SOURCE_GET)
         logger.debug(f"Sending get input source to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
         
