@@ -213,6 +213,22 @@ INPUT_SOURCE_NAMES = {
     0x26: 'screenshare',
 }
 
+PICTURE_STYLES = {
+    'highbright': 0x00,
+    'srgb': 0x01,
+    'vivid': 0x02,
+    'natural': 0x03,
+    'standard': 0x04,
+    'video': 0x05,
+    'static-signage': 0x06,
+    'text': 0x07,
+    'energy-saving': 0x08,
+    'soft': 0x09,
+    'user': 0x0A,
+}
+
+PICTURE_STYLE_NAMES = {value: key for key, value in PICTURE_STYLES.items()}
+
 
 class SicpResponse:
     """Parse and represent a SICP response."""
@@ -368,6 +384,20 @@ def build_av_mute_set_message(monitor_id, mute_on):
     param = 0x01 if mute_on else 0x00
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param, checksum])
+
+
+def build_picture_style_get_message(monitor_id):
+    """Build SICP message to query current picture style."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_GET, checksum])
+
+
+def build_picture_style_set_message(monitor_id, style_code):
+    """Build SICP message to set picture style."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code, checksum])
 
 
 def build_model_info_get_message(monitor_id, label_code):
@@ -809,6 +839,33 @@ def get_video_signal_status(monitor_id, ip):
     return None
 
 
+def get_picture_style(monitor_id, ip):
+    """Retrieve the current picture style value."""
+    message = build_picture_style_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get picture style", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_PICTURE_STYLE_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            style_code = payload[0]
+            style_name = PICTURE_STYLE_NAMES.get(style_code, f"0x{style_code:02X}")
+            print(f"  Picture style: {style_name}")
+            return style_code
+
+    return None
+
+
+def set_picture_style(monitor_id, ip, style_code):
+    """Set the picture style to the provided code."""
+    message = build_picture_style_set_message(monitor_id, style_code)
+    style_name = PICTURE_STYLE_NAMES.get(style_code, f"0x{style_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set picture style to {style_name}")
+    return response and response.is_ack
+
+
 def backlight_control(monitor_id, ip, backlight_on):
     """Control display backlight state."""
     message = build_backlight_set_message(monitor_id, backlight_on)
@@ -1115,6 +1172,8 @@ def print_usage():
     print("  get-model-info <label>    Get model/firmware/build info")
     print("  get-serial                Get display serial number")
     print("  get-video-signal          Check if active input has signal")
+    print("  get-picture-style         Get current picture style")
+    print("  set-picture-style <name>  Set picture style (highbright, srgb, ...)")
     print("  backlight-on              Turn backlight on")
     print("  backlight-off             Turn backlight off")
     print("  get-backlight             Get current backlight state")
@@ -1334,6 +1393,40 @@ def main():
             if get_video_signal_status(mon_id, mon_ip) is not None:
                 success_count += 1
 
+    elif command == "get-picture-style":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_picture_style(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-picture-style":
+        if len(sys.argv) < 4:
+            print("Error: set-picture-style requires a style name or numeric code")
+            print(f"Available styles: {', '.join(sorted(PICTURE_STYLES.keys()))}")
+            sys.exit(1)
+
+        style_arg_raw = sys.argv[3]
+        normalized = style_arg_raw.lower().replace('_', '-').strip()
+        style_code = None
+
+        if normalized in PICTURE_STYLES:
+            style_code = PICTURE_STYLES[normalized]
+        else:
+            try:
+                parsed = int(style_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown picture style. Use a known name or 0-255 code.")
+                print(f"Available styles: {', '.join(sorted(PICTURE_STYLES.keys()))}")
+                sys.exit(1)
+
+            style_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_picture_style(mon_id, mon_ip, style_code):
+                success_count += 1
+
     elif command == "get-volume":
         for (mon_ip, mon_id) in monitor_ids:
             if get_volume(mon_id, mon_ip) is not None:
@@ -1459,9 +1552,6 @@ def main():
     
     else:
         print(f"Error: Unknown command '{command}'")
-        print("Valid commands: on, off, backlight-on, backlight-off, get-backlight,")
-        print("                4k-on, 4k-off, get-4k, wol-on, wol-off, get-wol,")
-        print("                get-ip, input, get-input")
         sys.exit(1)
     
     # Print summary for multi-monitor operations
