@@ -51,39 +51,34 @@ class SICPIPMonitor(SICPProtocol):
                 if expect_data:
                     response_data = sock.recv(1024)
             
-        except socket.timeout as e:
-            # print(f"✗ Connection timeout to {self.ip} (Monitor ID: {self.monitor_id})")
-            # print(f"  No response within {TIMEOUT} seconds")
-            raise NetworkError(e)
-        except socket.error as e:
-            # print(f"✗ Socket error for {self.ip} (Monitor ID: {self.monitor_id}): {e}")
-            raise NetworkError(e)
-        except Exception as e:
-            # print(f"✗ Error for {self.ip} (Monitor ID: {self.monitor_id}): {e}")
-            raise NetworkError(e)
+        except socket.timeout as exc:
+            raise NetworkError(exc) from exc
+        except socket.error as exc:
+            raise NetworkError(exc) from exc
+        except Exception as exc:
+            raise NetworkError(exc) from exc
         else:
             if not expect_data:
                 return None  # No response expected for broadcast commands
-            elif not response_data:
+            if not response_data:
                 raise NetworkError("No response received from monitor")
 
-            # Parse response
             response = SicpResponse(response_data)
-            
-            # Log the action and response
-            if response.is_ack:
-                # print(f"✓ {action_description} - {self.ip} (Monitor {self.monitor_id})")
-                return response
-            elif response.is_nav:
+
+            if response.is_nav:
                 raise NotSupportedOrNotAvailableError("Command not supported or not available (NAV response)")
-            elif response.is_nack:
+            if response.is_nack:
                 raise ChecksumOrFormatError("Checksum or format error (NACK response)")
-            elif response.is_data_response:
-                # print(f"✓ {action_description} - {self.ip} (Monitor {self.monitor_id})")
-                return response
+            if not response.is_data_response:
+                raise RuntimeError("Expected data response but received an unexpected message")
+            if not response.valid:
+                raise RuntimeError("Invalid response received from monitor")
+
+            command = message[3] if len(message) > 3 else None
+            payload = response.data_payload or []
+            if command is not None and payload and payload[0] == command and len(payload) > 1:
+                response.data_payload = payload[1:]
             else:
-                # print(f"⚠ {action_description} - {self.ip} (Monitor {self.monitor_id})")
-                # print(f"  Response: {response}")
-                if response.error_message:
-                    print(f"  Error: {response.error_message}")
-                raise Exception(f"Unexpected response: {response}")
+                response.data_payload = payload
+
+            return response

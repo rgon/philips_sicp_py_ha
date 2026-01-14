@@ -80,23 +80,20 @@ class ColdStartPowerState(IntEnum):
     COLD_START_FORCED_ON = 0x01
     COLD_START_LAST_STATUS = 0x02
 
+class SicpInfoFields(IntEnum):
+    SICP_INFO_LABELS = 0x00
+    PLATFORM_LABEL = 0x01
+    PLATFORM_VERSION = 0x02
+    CUSTOM_INTENT_VERSION = 0x03
 
-SICP_INFO_LABELS = {
-    0x00: "sicp-version",
-    0x01: "platform-label",
-    0x02: "platform-version",
-    0x03: "custom-intent-version",
-}
-
-MODEL_INFO_LABELS = {
-    0x00: "model-number",
-    0x01: "firmware-version",
-    0x02: "build-date",
-    0x03: "android-firmware",
-    0x04: "hdmi-switch-version",
-    0x05: "lan-firmware",
-    0x06: "hdmi-switch2-version",
-}
+class ModelInfoFields(IntEnum):
+    MODEL_NUMBER = 0x00
+    FIRMWARE_VERSION = 0x01
+    BUILD_DATE = 0x02
+    ANDROID_FIRMWARE = 0x03
+    HDMI_SWITCH_VERSION = 0x04
+    LAN_FIRMWARE = 0x05
+    HDMI_SWITCH2_VERSION = 0x06
 
 # IP Parameter identifiers
 class IPParameterCode(IntEnum):

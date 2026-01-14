@@ -15,6 +15,10 @@ from .messages import (
     SmartPowerLevel,
     ApmMode,
     IPParameterCode,
+    IPParameterValueType,
+    SicpInfoFields,
+    ModelInfoFields,
+    InputSource,
 )
 
 # Hardcoded display configuration
@@ -97,6 +101,33 @@ REMOTE_KEY_ALIASES = {
     'voldown': RemoteKey.VOL_MINUS.value,
     'volume-down': RemoteKey.VOL_MINUS.value,
 }
+
+
+def _monitor_label(monitor):
+    monitor_id = getattr(monitor, 'monitor_id', '?')
+    ip = getattr(monitor, 'ip', 'unknown')
+    return f"[Monitor {monitor_id} @ {ip}]"
+
+
+def _format_enum_value(member):
+    return member.name.lower().replace('_', '-')
+
+
+def _format_value(value):
+    if value is None:
+        return "(no data)"
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    if hasattr(value, 'name') and hasattr(value, 'value'):
+        return _format_enum_value(value)
+    if isinstance(value, (list, tuple)):
+        return ', '.join(str(item) for item in value)
+    return str(value)
+
+
+def _print_monitor_value(monitor, label, value, formatter=None):
+    format_func = formatter or _format_value
+    print(f"{_monitor_label(monitor)} {label}: {format_func(value)}")
 
 def print_usage():
     """Print usage information."""
@@ -240,9 +271,10 @@ def main():
                 success_count += 1
     
     elif command == "get-backlight":
-        for monitor in monitor_ids: 
-            if monitor.get_backlight_state():
-                success_count += 1
+        for monitor in monitor_ids:
+            state = monitor.get_backlight_state()
+            _print_monitor_value(monitor, "Backlight", state)
+            success_count += 1
     
     elif command == "4k-on": 
         for monitor in monitor_ids:
@@ -255,19 +287,22 @@ def main():
                 success_count += 1
     
     elif command == "get-4k":
-        for monitor in monitor_ids: 
-            if monitor.get_android_4k_state():
-                success_count += 1
+        for monitor in monitor_ids:
+            state = monitor.get_android_4k_state()
+            _print_monitor_value(monitor, "Android 4K", state)
+            success_count += 1
 
     elif command == "get-power":
         for monitor in monitor_ids:
-            if monitor.get_power_state() is not None:
-                success_count += 1
+            state = monitor.get_power_state()
+            _print_monitor_value(monitor, "Power", state)
+            success_count += 1
 
     elif command == "get-cold-start":
         for monitor in monitor_ids:
-            if monitor.get_cold_start_power_state() is not None:
-                success_count += 1
+            state = monitor.get_cold_start_power_state()
+            _print_monitor_value(monitor, "Cold-start power", state)
+            success_count += 1
 
     elif command == "set-cold-start":
         if len(sys.argv) < 4:
@@ -291,8 +326,15 @@ def main():
 
     elif command == "get-temperature":
         for monitor in monitor_ids:
-            if monitor.get_temperature() is not None:
-                success_count += 1
+            temps = monitor.get_temperature()
+
+            def _format_temps(values):
+                if not values:
+                    return "(no data)"
+                return ', '.join(f"{value} C" for value in values)
+
+            _print_monitor_value(monitor, "Temperatures", temps or [], _format_temps)
+            success_count += 1
 
     elif command == "get-sicp-info":
         if len(sys.argv) < 4:
@@ -301,24 +343,30 @@ def main():
 
         label_arg = sys.argv[3].lower()
         label_map = {
-            "sicp-version": 0x00,
-            "version": 0x00,
-            "platform-label": 0x01,
-            "label": 0x01,
-            "platform-version": 0x02,
-            "custom-intent": 0x03,
-            "custom-intent-version": 0x03,
+            "sicp-version": SicpInfoFields.SICP_INFO_LABELS,
+            "version": SicpInfoFields.SICP_INFO_LABELS,
+            "platform-label": SicpInfoFields.PLATFORM_LABEL,
+            "label": SicpInfoFields.PLATFORM_LABEL,
+            "platform-version": SicpInfoFields.PLATFORM_VERSION,
+            "custom-intent": SicpInfoFields.CUSTOM_INTENT_VERSION,
+            "custom-intent-version": SicpInfoFields.CUSTOM_INTENT_VERSION,
         }
 
         if label_arg not in label_map:
             print("Error: Unknown label. Use sicp-version, platform-label, platform-version, custom-intent")
             sys.exit(1)
 
-        label_code = label_map[label_arg]
+        label_enum = label_map[label_arg]
 
         for monitor in monitor_ids:
-            if monitor.get_sicp_info(label_code) is not None:
-                success_count += 1
+            info_text = monitor.get_sicp_info(label_enum)
+            _print_monitor_value(
+                monitor,
+                f"SICP info ({label_arg})",
+                info_text,
+                lambda text: text if text else "(empty)",
+            )
+            success_count += 1
 
     elif command == "get-model-info":
         if len(sys.argv) < 4:
@@ -327,47 +375,56 @@ def main():
 
         label_arg = sys.argv[3].lower()
         model_map = {
-            "model": 0x00,
-            "model-number": 0x00,
-            "fw": 0x01,
-            "firmware": 0x01,
-            "firmware-version": 0x01,
-            "build": 0x02,
-            "build-date": 0x02,
-            "android": 0x03,
-            "android-fw": 0x03,
-            "hdmi": 0x04,
-            "hdmi-switch": 0x04,
-            "lan": 0x05,
-            "lan-fw": 0x05,
-            "hdmi2": 0x06,
-            "hdmi-switch2": 0x06,
+            "model": ModelInfoFields.MODEL_NUMBER,
+            "model-number": ModelInfoFields.MODEL_NUMBER,
+            "fw": ModelInfoFields.FIRMWARE_VERSION,
+            "firmware": ModelInfoFields.FIRMWARE_VERSION,
+            "firmware-version": ModelInfoFields.FIRMWARE_VERSION,
+            "build": ModelInfoFields.BUILD_DATE,
+            "build-date": ModelInfoFields.BUILD_DATE,
+            "android": ModelInfoFields.ANDROID_FIRMWARE,
+            "android-fw": ModelInfoFields.ANDROID_FIRMWARE,
+            "hdmi": ModelInfoFields.HDMI_SWITCH_VERSION,
+            "hdmi-switch": ModelInfoFields.HDMI_SWITCH_VERSION,
+            "lan": ModelInfoFields.LAN_FIRMWARE,
+            "lan-fw": ModelInfoFields.LAN_FIRMWARE,
+            "hdmi2": ModelInfoFields.HDMI_SWITCH2_VERSION,
+            "hdmi-switch2": ModelInfoFields.HDMI_SWITCH2_VERSION,
         }
 
         if label_arg not in model_map:
             print("Error: Unknown label. Use model, firmware, build, android, hdmi, lan, hdmi2")
             sys.exit(1)
 
-        label_code = model_map[label_arg]
+        label_enum = model_map[label_arg]
 
         for monitor in monitor_ids:
-            if monitor.get_model_info(label_code) is not None:
-                success_count += 1
+            info_text = monitor.get_model_info(label_enum)
+            _print_monitor_value(
+                monitor,
+                f"Model info ({label_arg})",
+                info_text,
+                lambda text: text if text else "(empty)",
+            )
+            success_count += 1
 
     elif command == "get-serial":
         for monitor in monitor_ids:
-            if monitor.get_serial_number() is not None:
-                success_count += 1
+            serial = monitor.get_serial_number()
+            _print_monitor_value(monitor, "Serial", serial or "(empty)", lambda value: value or "(empty)")
+            success_count += 1
 
     elif command == "get-video-signal":
         for monitor in monitor_ids:
-            if monitor.get_video_signal_status() is not None:
-                success_count += 1
+            video_present = monitor.get_video_signal_status()
+            _print_monitor_value(monitor, "Video signal", video_present, lambda value: "present" if value else "missing")
+            success_count += 1
 
     elif command == "get-picture-style":
         for monitor in monitor_ids:
-            if monitor.get_picture_style() is not None:
-                success_count += 1
+            style = monitor.get_picture_style()
+            _print_monitor_value(monitor, "Picture style", style)
+            success_count += 1
 
     elif command == "set-picture-style":
         if len(sys.argv) < 4:
@@ -378,20 +435,21 @@ def main():
         style_arg_raw = sys.argv[3]
 
         try:
-            style_code = _resolve_enum_choice(PictureStyle, style_arg_raw)
+            style_enum = _parse_enum_token(PictureStyle, style_arg_raw)
         except ValueError:
             print("Error: Unknown picture style. Use a known name or 0-255 code.")
             print(f"Available styles: {', '.join(_enum_choice_list(PictureStyle))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_picture_style(style_code):
+            if monitor.set_picture_style(style_enum):
                 success_count += 1
 
     elif command == "get-brightness":
         for monitor in monitor_ids:
-            if monitor.get_brightness_level() is not None:
-                success_count += 1
+            brightness = monitor.get_brightness_level()
+            _print_monitor_value(monitor, "Brightness", brightness, lambda value: f"{value}%")
+            success_count += 1
 
     elif command == "set-brightness":
         """
@@ -421,8 +479,9 @@ def main():
 
     elif command == "get-color-temp":
         for monitor in monitor_ids:
-            if monitor.get_color_temperature_mode() is not None:
-                success_count += 1
+            mode = monitor.get_color_temperature_mode()
+            _print_monitor_value(monitor, "Color temperature", mode)
+            success_count += 1
 
     elif command == "set-color-temp":
         """
@@ -436,23 +495,15 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_code = _parse_enum_token(ColorTemperatureMode, mode_arg_raw).value
+            mode_enum = _parse_enum_token(ColorTemperatureMode, mode_arg_raw)
         except ValueError:
-            try:
-                parsed = int(mode_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Color temperature must match a known preset name or be a 0-255 code")
-                print(f"Available modes: {', '.join(_enum_choice_list(ColorTemperatureMode))}")
-                sys.exit(1)
-
-            mode_code = parsed
+            print("Error: Color temperature must match a known preset name or be a 0-255 code")
+            print(f"Available modes: {', '.join(_enum_choice_list(ColorTemperatureMode))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_color_temperature_mode(mode_code):
+                if monitor.set_color_temperature_mode(mode_enum):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -460,8 +511,9 @@ def main():
 
     elif command == "get-color-temp-precise":
         for monitor in monitor_ids:
-            if monitor.get_precise_color_temperature() is not None:
-                success_count += 1
+            kelvin = monitor.get_precise_color_temperature()
+            _print_monitor_value(monitor, "Color temperature (User 2)", kelvin, lambda value: f"{value} K")
+            success_count += 1
 
     elif command == "set-color-temp-precise":
         """
@@ -501,8 +553,9 @@ def main():
 
     elif command == "get-test-pattern":
         for monitor in monitor_ids:
-            if monitor.get_test_pattern() is not None:
-                success_count += 1
+            pattern = monitor.get_test_pattern()
+            _print_monitor_value(monitor, "Test pattern", pattern)
+            success_count += 1
 
     elif command == "set-test-pattern":
         if len(sys.argv) < 4:
@@ -512,7 +565,7 @@ def main():
 
         pattern_arg_raw = sys.argv[3]
         try:
-            pattern_code = _parse_enum_token(TestPattern, pattern_arg_raw).value
+            pattern_enum = _parse_enum_token(TestPattern, pattern_arg_raw)
         except ValueError:
             try:
                 parsed = int(pattern_arg_raw, 0)
@@ -524,16 +577,22 @@ def main():
                 print(f"Available patterns: {', '.join(_enum_choice_list(TestPattern))}")
                 sys.exit(1)
 
-            pattern_code = parsed
+            try:
+                pattern_enum = TestPattern(parsed)
+            except ValueError:
+                print("Error: Unknown test pattern. Use a known name or 0-255 code.")
+                print(f"Available patterns: {', '.join(_enum_choice_list(TestPattern))}")
+                sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_test_pattern(pattern_code):
+            if monitor.set_test_pattern(pattern_enum):
                 success_count += 1
 
     elif command == "get-remote-lock":
         for monitor in monitor_ids:
-            if monitor.get_remote_lock_state() is not None:
-                success_count += 1
+            state = monitor.get_remote_lock_state()
+            _print_monitor_value(monitor, "Remote lock", state)
+            success_count += 1
 
     elif command == "set-remote-lock":
         if len(sys.argv) < 4:
@@ -544,13 +603,14 @@ def main():
         mode_arg_raw = sys.argv[3]
         try:
             mode_code = _resolve_enum_choice(RemoteLockState, mode_arg_raw)
+            mode_enum = RemoteLockState(mode_code)
         except ValueError:
             print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_list(RemoteLockState))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_remote_lock_state(mode_code):
+            if monitor.set_remote_lock_state(mode_enum):
                 success_count += 1
 
     elif command == "remote-key":
@@ -566,19 +626,21 @@ def main():
                 key_arg_raw,
                 aliases=REMOTE_KEY_ALIASES,
             )
+            key_enum = RemoteKey(key_code)
         except ValueError:
             print("Error: Unknown remote key. Use a known name or 0-255 code.")
             print(f"Available keys: {', '.join(_enum_choice_strings(RemoteKey, REMOTE_KEY_ALIASES))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.simulate_remote_key(key_code):
+            if monitor.simulate_remote_key(key_enum):
                 success_count += 1
 
     elif command == "get-power-on-logo":
         for monitor in monitor_ids:
-            if monitor.get_power_on_logo_mode() is not None:
-                success_count += 1
+            mode = monitor.get_power_on_logo_mode()
+            _print_monitor_value(monitor, "Power-on logo", mode)
+            success_count += 1
 
     elif command == "set-power-on-logo":
         if len(sys.argv) < 4:
@@ -589,19 +651,21 @@ def main():
         mode_arg_raw = sys.argv[3]
         try:
             mode_code = _resolve_enum_choice(PowerOnLogoMode, mode_arg_raw)
+            mode_enum = PowerOnLogoMode(mode_code)
         except ValueError:
             print("Error: Unknown power-on logo mode. Use off|on|user or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_list(PowerOnLogoMode))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_power_on_logo_mode(mode_code):
+            if monitor.set_power_on_logo_mode(mode_enum):
                 success_count += 1
 
     elif command == "get-osd-info":
         for monitor in monitor_ids:
-            if monitor.get_osd_info_timeout() is not None:
-                success_count += 1
+            timeout = monitor.get_osd_info_timeout()
+            _print_monitor_value(monitor, "Information OSD", timeout, lambda value: "off" if value == 0 else f"{value} sec")
+            success_count += 1
 
     elif command == "set-osd-info":
         if len(sys.argv) < 4:
@@ -632,8 +696,9 @@ def main():
 
     elif command == "get-auto-signal":
         for monitor in monitor_ids:
-            if monitor.get_auto_signal_mode() is not None:
-                success_count += 1
+            mode = monitor.get_auto_signal_mode()
+            _print_monitor_value(monitor, "Auto signal", mode)
+            success_count += 1
 
     elif command == "set-auto-signal":
         if len(sys.argv) < 4:
@@ -649,6 +714,7 @@ def main():
                 aliases=AUTO_SIGNAL_ALIASES,
                 max_value=0x05,
             )
+            mode_enum = AutoSignalMode(mode_code)
         except ValueError:
             print("Error: Auto signal mode must be off|all|pc-only|video-only|failover or 0-5")
             print(f"Available modes: {', '.join(_enum_choice_strings(AutoSignalMode, AUTO_SIGNAL_ALIASES))}")
@@ -656,7 +722,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_auto_signal_mode(mode_code):
+                if monitor.set_auto_signal_mode(mode_enum):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -664,8 +730,9 @@ def main():
 
     elif command == "get-power-save":
         for monitor in monitor_ids:
-            if monitor.get_power_save_mode() is not None:
-                success_count += 1
+            mode = monitor.get_power_save_mode()
+            _print_monitor_value(monitor, "Power save", mode)
+            success_count += 1
 
     elif command == "set-power-save":
         if len(sys.argv) < 4:
@@ -680,19 +747,21 @@ def main():
                 mode_arg_raw,
                 aliases=POWER_SAVE_ALIASES,
             )
+            mode_enum = PowerSaveMode(mode_code)
         except ValueError:
             print("Error: Unknown power save mode. Use a known name or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_strings(PowerSaveMode, POWER_SAVE_ALIASES))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_power_save_mode(mode_code):
+            if monitor.set_power_save_mode(mode_enum):
                 success_count += 1
 
     elif command == "get-smart-power":
         for monitor in monitor_ids:
-            if monitor.get_smart_power_level() is not None:
-                success_count += 1
+            level = monitor.get_smart_power_level()
+            _print_monitor_value(monitor, "Smart power", level)
+            success_count += 1
 
     elif command == "set-smart-power":
         if len(sys.argv) < 4:
@@ -707,19 +776,21 @@ def main():
                 level_arg_raw,
                 aliases=SMART_POWER_ALIASES,
             )
+            level_enum = SmartPowerLevel(level_code)
         except ValueError:
             print("Error: Unknown smart power level. Use off|low|medium|high or 0-255 code.")
             print(f"Available levels: {', '.join(_enum_choice_strings(SmartPowerLevel, SMART_POWER_ALIASES))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_smart_power_level(level_code):
+            if monitor.set_smart_power_level(level_enum):
                 success_count += 1
 
     elif command == "get-apm":
         for monitor in monitor_ids:
-            if monitor.get_apm_mode() is not None:
-                success_count += 1
+            mode = monitor.get_apm_mode()
+            _print_monitor_value(monitor, "APM", mode)
+            success_count += 1
 
     elif command == "set-apm":
         if len(sys.argv) < 4:
@@ -734,19 +805,22 @@ def main():
                 apm_arg_raw,
                 aliases=APM_ALIASES,
             )
+            apm_enum = ApmMode(apm_code)
         except ValueError:
             print("Error: Unknown APM mode. Use off|on|mode1|mode2 or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_strings(ApmMode, APM_ALIASES))}")
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_apm_mode(apm_code):
+            if monitor.set_apm_mode(apm_enum):
                 success_count += 1
 
     elif command == "get-group-id":
         for monitor in monitor_ids:
-            if monitor.get_group_id() is not None:
-                success_count += 1
+            group_value = monitor.get_group_id()
+            label = "off" if group_value == 0xFF else str(group_value)
+            _print_monitor_value(monitor, "Group ID", label)
+            success_count += 1
 
     elif command == "set-group-id":
         if len(sys.argv) < 4:
@@ -800,8 +874,17 @@ def main():
 
     elif command == "get-volume":
         for monitor in monitor_ids:
-            if monitor.get_volume() is not None:
-                success_count += 1
+            volume_levels = monitor.get_volume()
+
+            def _format_volume(levels):
+                if not levels:
+                    return "(no data)"
+                speaker, audio_out = levels
+                audio_label = "N/A" if audio_out is None else f"{audio_out}%"
+                return f"speaker={speaker}%, audio-out={audio_label}"
+
+            _print_monitor_value(monitor, "Volume", volume_levels, _format_volume)
+            success_count += 1
 
     elif command == "set-volume":
         if len(sys.argv) < 4:
@@ -832,8 +915,9 @@ def main():
 
     elif command == "get-mute":
         for monitor in monitor_ids:
-            if monitor.get_mute_status() is not None:
-                success_count += 1
+            muted = monitor.get_mute_status()
+            _print_monitor_value(monitor, "Mute", muted, lambda value: "muted" if value else "unmuted")
+            success_count += 1
 
     elif command == "mute-on":
         for monitor in monitor_ids:
@@ -847,8 +931,9 @@ def main():
 
     elif command == "get-av-mute":
         for monitor in monitor_ids:
-            if monitor.get_av_mute_status() is not None:
-                success_count += 1
+            av_muted = monitor.get_av_mute_status()
+            _print_monitor_value(monitor, "A/V mute", av_muted, lambda value: "enabled" if value else "disabled")
+            success_count += 1
 
     elif command == "av-mute-on":
         for monitor in monitor_ids:
@@ -872,9 +957,22 @@ def main():
         if len(sys.argv) >= 5:
             value_type = sys.argv[4].lower()
 
+        try:
+            parameter_enum = _parse_enum_token(IPParameterCode, parameter_name)
+        except ValueError:
+            print(f"Error: Unknown IP parameter '{parameter_name}'.")
+            print(f"Available parameters: {', '.join(_enum_choice_list(IPParameterCode))}")
+            sys.exit(1)
+
         for monitor in monitor_ids:
-            if monitor.get_ip_parameter(parameter_name, value_type):
-                success_count += 1
+            value = monitor.get_ip_parameter(parameter_enum, IPParameterValueType.QUEUED if value_type == 'queued' else IPParameterValueType.CURRENT)
+            _print_monitor_value(
+                monitor,
+                f"IP parameter ({parameter_name}/{value_type})",
+                value or "(empty)",
+                lambda text: text or "(empty)",
+            )
+            success_count += 1
 
     elif command == "wol-on":
         for monitor in monitor_ids:
@@ -888,8 +986,9 @@ def main():
 
     elif command == "get-wol":
         for monitor in monitor_ids:
-            if monitor.get_wake_on_lan():
-                success_count += 1
+            wol = monitor.get_wake_on_lan()
+            _print_monitor_value(monitor, "Wake on LAN", wol)
+            success_count += 1
     
     elif command == "input":
         if len(sys. argv) < 4:
@@ -897,7 +996,7 @@ def main():
             print("Example sources: browser, mediaplayer, pdfplayer, hdmi1, hdmi2, displayport1")
             sys.exit(1)
         
-        input_source_name = sys.argv[3]. lower()
+        input_source_arg = sys.argv[3]
         playlist = 0
         
         # Optional playlist parameter
@@ -911,14 +1010,22 @@ def main():
                 print("Error: Playlist must be a number (0-8)")
                 sys. exit(1)
         
+        try:
+            input_source = _parse_enum_token(InputSource, input_source_arg)
+        except ValueError:
+            print("Error: Unknown input source name.")
+            print("Example sources: browser, mediaplayer, pdfplayer, hdmi1, hdmi2, displayport1")
+            sys.exit(1)
+
         for monitor in monitor_ids: 
-            if monitor.set_input_source(input_source_name, playlist):
+            if monitor.set_input_source(input_source, playlist):
                 success_count += 1
     
     elif command == "get-input": 
         for monitor in monitor_ids:
-            if monitor.get_input_source():
-                success_count += 1
+            source = monitor.get_input_source()
+            _print_monitor_value(monitor, "Input", source)
+            success_count += 1
     
     else:
         print(f"Error: Unknown command '{command}'")
