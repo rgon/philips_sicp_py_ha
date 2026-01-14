@@ -45,6 +45,9 @@ CMD_AV_MUTE_GET = 0x7A
 CMD_AV_MUTE_SET = 0x7B
 CMD_PICTURE_STYLE_GET = 0x65
 CMD_PICTURE_STYLE_SET = 0x66
+CMD_MONITOR_ID_SET = 0x69
+CMD_GROUP_ID_SET = 0x5C
+CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
 CMD_POWER_SAVE_GET = 0xD3
 CMD_SMART_POWER_SET = 0xDD
@@ -452,6 +455,40 @@ def build_picture_style_set_message(monitor_id, style_code):
     msg_size = 0x06
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code, checksum])
+
+
+def build_group_id_get_message(monitor_id):
+    """Build SICP message to query current group ID."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_GET, checksum])
+
+
+def build_group_id_set_message(monitor_id, group_id):
+    """Build SICP message to set the group ID."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_SET, group_id)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_GROUP_ID_SET, group_id, checksum])
+
+
+def build_monitor_id_set_message(monitor_id, new_monitor_id):
+    """Build SICP message to assign a new monitor ID (SICP 7.15)."""
+    msg_size = 0x06
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_MONITOR_ID_SET,
+        new_monitor_id,
+    )
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_MONITOR_ID_SET,
+        new_monitor_id,
+        checksum,
+    ])
 
 
 def build_power_save_get_message(monitor_id):
@@ -1043,6 +1080,56 @@ def set_apm_mode(monitor_id, ip, mode_code):
     return response and response.is_ack
 
 
+def get_group_id(monitor_id, ip):
+    """Retrieve the current group ID (1-254, or 0xFF for off)."""
+    message = build_group_id_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get group ID", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_GROUP_ID_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            group_value = payload[0]
+            label = "off" if group_value == 0xFF else str(group_value)
+            print(f"  Group ID: {label}")
+            return group_value
+
+    return None
+
+
+def set_group_id(monitor_id, ip, group_value):
+    """Set the display group ID."""
+    if not ((1 <= group_value <= 0xFE) or group_value == 0xFF):
+        raise ValueError("Group ID must be 1-254 or 0xFF for off")
+
+    message = build_group_id_set_message(monitor_id, group_value)
+    label = "off" if group_value == 0xFF else str(group_value)
+    response = send_message(monitor_id, ip, message, f"Set group ID to {label}")
+    return response and response.is_ack
+
+
+def set_monitor_id(monitor_id, ip, new_monitor_id):
+    """Assign a new monitor ID (1-255; 0 is reserved for broadcast)."""
+    if not 1 <= new_monitor_id <= 0xFF:
+        raise ValueError("Monitor ID must be between 1 and 255")
+
+    message = build_monitor_id_set_message(monitor_id, new_monitor_id)
+    response = send_message(
+        monitor_id,
+        ip,
+        message,
+        f"Set monitor ID to {new_monitor_id}",
+    )
+
+    if response and response.is_ack:
+        print("  Reminder: update your DISPLAYS map to reflect the new ID")
+        return True
+
+    return False
+
+
 def backlight_control(monitor_id, ip, backlight_on):
     """Control display backlight state."""
     message = build_backlight_set_message(monitor_id, backlight_on)
@@ -1105,23 +1192,28 @@ def wol_control(monitor_id, ip, enable_wol):
     return response and response.is_ack
 
 
-def get_wol_state(monitor_id, ip):
-    """Get current Wake on LAN state."""
+def get_wake_on_lan(monitor_id, ip):
+    """Retrieve the Wake on LAN (WOL) setting (0x00 off, 0x01 on)."""
     message = build_wol_get_message(monitor_id)
     response = send_message(monitor_id, ip, message, "Get Wake on LAN state", expect_data=True)
 
-    if response and response.is_data_response and len(response.data_payload) >= 1:
-        # Some firmware echoes the command (0x9C) as the first payload byte.
-        if response.data_payload[0] == CMD_WOL_GET and len(response.data_payload) >= 2:
-            state_byte = response.data_payload[1]
-        else:
-            state_byte = response.data_payload[0]
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_WOL_GET and len(payload) > 1:
+            payload = payload[1:]
 
-        state = "ON" if state_byte == WOL_ENABLED else "OFF"
-        print(f"  Wake on LAN: {state}")
-        return state
+        if payload:
+            state_byte = payload[0]
+            state = "ON" if state_byte == WOL_ENABLED else "OFF"
+            print(f"  Wake on LAN: {state}")
+            return state
 
     return None
+
+
+def get_wol_state(monitor_id, ip):
+    """Get current Wake on LAN state."""
+    return get_wake_on_lan(monitor_id, ip)
 
 
 def set_volume(monitor_id, ip, speaker_level=None, audio_out_level=None):
@@ -1357,6 +1449,9 @@ def print_usage():
     print("  set-smart-power <level>   Set smart power level (off|low|medium|high)")
     print("  get-apm                   Get advanced power management mode")
     print("  set-apm <mode>            Set advanced power management (off|on|mode1|mode2)")
+    print("  get-group-id              Get current group ID")
+    print("  set-group-id <id|off>     Set group ID (1-254 or ff for off)")
+    print("  set-monitor-id <id>       Set monitor ID (1-255)")
     print("  backlight-on              Turn backlight on")
     print("  backlight-off             Turn backlight off")
     print("  get-backlight             Get current backlight state")
@@ -1710,6 +1805,61 @@ def main():
             if set_apm_mode(mon_id, mon_ip, apm_code):
                 success_count += 1
 
+    elif command == "get-group-id":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_group_id(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-group-id":
+        if len(sys.argv) < 4:
+            print("Error: set-group-id requires a numeric value or 'off'")
+            sys.exit(1)
+
+        raw_value = sys.argv[3].strip().lower()
+        if raw_value in {"off", "0xff", "ff"}:
+            group_value = 0xFF
+        else:
+            try:
+                group_value = int(sys.argv[3], 0)
+            except ValueError:
+                print("Error: Group ID must be a number (1-254) or 'off'")
+                sys.exit(1)
+
+        if not ((1 <= group_value <= 254) or group_value == 0xFF):
+            print("Error: Group ID must be 1-254 or 'off' (0xFF)")
+            sys.exit(1)
+
+        for (mon_ip, mon_id) in monitor_ids:
+            try:
+                if set_group_id(mon_id, mon_ip, group_value):
+                    success_count += 1
+            except ValueError as exc:
+                print(f"Error: {exc}")
+                sys.exit(1)
+
+    elif command == "set-monitor-id":
+        if len(sys.argv) < 4:
+            print("Error: set-monitor-id requires a numeric value (1-255)")
+            sys.exit(1)
+
+        try:
+            new_monitor_id = int(sys.argv[3], 0)
+        except ValueError:
+            print("Error: Monitor ID must be a number between 1 and 255")
+            sys.exit(1)
+
+        if not 1 <= new_monitor_id <= 0xFF:
+            print("Error: Monitor ID must be between 1 and 255")
+            sys.exit(1)
+
+        for (mon_ip, mon_id) in monitor_ids:
+            try:
+                if set_monitor_id(mon_id, mon_ip, new_monitor_id):
+                    success_count += 1
+            except ValueError as exc:
+                print(f"Error: {exc}")
+                sys.exit(1)
+
     elif command == "get-volume":
         for (mon_ip, mon_id) in monitor_ids:
             if get_volume(mon_id, mon_ip) is not None:
@@ -1800,7 +1950,7 @@ def main():
 
     elif command == "get-wol":
         for (mon_ip, mon_id) in monitor_ids:
-            if get_wol_state(mon_id, mon_ip):
+            if get_wake_on_lan(mon_id, mon_ip):
                 success_count += 1
     
     elif command == "input":
