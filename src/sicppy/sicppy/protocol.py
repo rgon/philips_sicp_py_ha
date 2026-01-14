@@ -2,34 +2,105 @@ import string
 from abc import abstractmethod
 import logging
 
-from .messages import build_power_message, build_power_get_message, POWER_ON, POWER_OFF, build_cold_start_get_message, \
-    COLD_START_STATE_NAMES, build_cold_start_set_message, build_temperature_get_message, CMD_TEMPERATURE_GET, \
+from .messages import build_power_message, build_power_get_message, PowerState, build_cold_start_get_message, \
+    ColdStartPowerState, build_cold_start_set_message, build_temperature_get_message, CMD_TEMPERATURE_GET, \
     build_sicp_info_get_message, SICP_INFO_LABELS, CMD_SICP_INFO_GET, build_model_info_get_message, MODEL_INFO_LABELS, \
     CMD_MODEL_INFO_GET, build_serial_get_message, CMD_SERIAL_GET, build_video_signal_get_message, CMD_VIDEO_SIGNAL_GET, \
-    build_picture_style_get_message, PICTURE_STYLE_NAMES, CMD_PICTURE_STYLE_GET, build_picture_style_set_message, \
+    build_picture_style_get_message, PictureStyle, CMD_PICTURE_STYLE_GET, build_picture_style_set_message, \
     build_video_parameters_set_message, build_video_parameters_get_message, CMD_VIDEO_PARAMETERS_GET, \
-    build_color_temperature_set_message, COLOR_TEMPERATURE_NAMES, CMD_COLOR_TEMPERATURE_GET, COLOR_TEMPERATURE_MODES, \
+    build_color_temperature_set_message, ColorTemperatureMode, CMD_COLOR_TEMPERATURE_GET, \
     build_color_temperature_get_message, build_color_temperature_fine_set_message, \
     build_color_temperature_fine_get_message, CMD_COLOR_TEMPERATURE_FINE_GET, build_test_pattern_get_message, \
-    TEST_PATTERN_NAMES, CMD_TEST_PATTERN_GET, build_test_pattern_set_message, build_remote_lock_get_message, \
-    REMOTE_LOCK_STATE_NAMES, CMD_REMOTE_LOCK_GET, build_remote_lock_set_message, build_remote_key_simulation_message, \
-    REMOTE_KEY_NAMES, build_power_on_logo_get_message, POWER_ON_LOGO_MODE_NAMES, CMD_POWER_ON_LOGO_GET, \
+    TestPattern, CMD_TEST_PATTERN_GET, build_test_pattern_set_message, build_remote_lock_get_message, \
+    RemoteLockState, CMD_REMOTE_LOCK_GET, build_remote_lock_set_message, build_remote_key_simulation_message, \
+    RemoteKey, build_power_on_logo_get_message, PowerOnLogoMode, CMD_POWER_ON_LOGO_GET, \
     build_power_on_logo_set_message, build_osd_info_get_message, CMD_OSD_INFO_GET, build_osd_info_set_message, \
-    build_auto_signal_get_message, AUTO_SIGNAL_MODE_NAMES, CMD_AUTO_SIGNAL_GET, build_auto_signal_set_message, \
-    build_power_save_get_message, POWER_SAVE_MODE_NAMES, CMD_POWER_SAVE_GET, build_power_save_set_message, \
-    build_smart_power_get_message, SMART_POWER_LEVEL_NAMES, CMD_SMART_POWER_GET, build_smart_power_set_message, \
-    build_apm_get_message, APM_MODE_NAMES, CMD_APM_GET, build_apm_set_message, build_group_id_get_message, \
+    build_auto_signal_get_message, AutoSignalMode, CMD_AUTO_SIGNAL_GET, build_auto_signal_set_message, \
+    build_power_save_get_message, PowerSaveMode, CMD_POWER_SAVE_GET, build_power_save_set_message, \
+    build_smart_power_get_message, SmartPowerLevel, CMD_SMART_POWER_GET, build_smart_power_set_message, \
+    build_apm_get_message, ApmMode, CMD_APM_GET, build_apm_set_message, build_group_id_get_message, \
     CMD_GROUP_ID_GET, build_group_id_set_message, build_monitor_id_set_message, build_backlight_set_message, \
-    BACKLIGHT_ON, build_backlight_get_message, build_android_4k_set_message, ANDROID_4K_ENABLED, \
-    build_android_4k_get_message, build_wol_set_message, build_wol_get_message, WOL_ENABLED, CMD_WOL_GET, \
+    build_backlight_get_message, build_android_4k_set_message, \
+    build_android_4k_get_message, build_wol_set_message, build_wol_get_message, CMD_WOL_GET, \
     build_volume_set_message, build_volume_get_message, build_mute_get_message, build_mute_set_message, \
     build_av_mute_get_message, build_av_mute_set_message, CMD_AV_MUTE_GET, \
-    build_ip_parameter_get_message, CMD_IP_PARAMETER_GET, IP_PARAMETER_NAMES, IP_PARAMETER_VALUE_TYPES, IP_PARAMETER_VALUE_TYPE_NAMES, IP_PARAMETER_CODES, \
-    build_input_source_message, build_get_input_source_message, INPUT_SOURCES, INPUT_SOURCE_NAMES
+    build_ip_parameter_get_message, CMD_IP_PARAMETER_GET, IPParameterCode, IPParameterValueType, \
+    build_input_source_message, build_get_input_source_message, InputSource
 
 from .response import SicpResponse
 
 logger = logging.getLogger(__name__)
+
+def _format_color_temperature_label(label):
+    condensed = label.replace('-', '')
+    if condensed.isdigit():
+        return f"{condensed}k"
+    if condensed.endswith('k') and condensed[:-1].isdigit():
+        return f"{condensed[:-1]}k"
+    if condensed.startswith('k') and condensed[1:].isdigit():
+        return f"{condensed[1:]}k"
+    return label
+
+
+def _normalize_enum_name(enum_cls, raw_name):
+    label = raw_name.lower().replace('_', '-')
+    if enum_cls is ColorTemperatureMode:
+        return _format_color_temperature_label(label)
+    return label
+
+
+def _normalize_enum_token(enum_cls, token):
+    label = str(token).lower().replace('_', '-').replace(' ', '-').strip()
+    if enum_cls is ColorTemperatureMode:
+        return _format_color_temperature_label(label)
+    return label
+
+
+def _enum_label(enum_cls, value):
+    """Return kebab-case label for enum value or fallback to hex."""
+    try:
+        member = enum_cls(value)
+    except ValueError:
+        if isinstance(value, int):
+            return f"0x{value:02X}"
+        return str(value)
+
+    return _normalize_enum_name(enum_cls, member.name)
+
+
+def _enum_choice_names(enum_cls):
+    labels = []
+    seen = set()
+    for name in enum_cls.__members__:
+        label = _normalize_enum_name(enum_cls, name)
+        if label not in seen:
+            labels.append(label)
+            seen.add(label)
+    return sorted(labels)
+
+
+def _parse_enum_token(enum_cls, token):
+    if isinstance(token, enum_cls):
+        return token
+
+    if isinstance(token, int):
+        try:
+            return enum_cls(token)
+        except ValueError as exc:
+            raise ValueError from exc
+
+    normalized = _normalize_enum_token(enum_cls, token)
+
+    for name, member in enum_cls.__members__.items():
+        if _normalize_enum_name(enum_cls, name) == normalized:
+            return member
+
+    try:
+        value = int(str(token), 0)
+    except ValueError as exc:
+        raise ValueError from exc
+
+    return enum_cls(value)
 
 def _coerce_kelvin_to_step_value(kelvin_value):
     try:
@@ -88,9 +159,9 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             state_code = response.data_payload[0]
-            if state_code == POWER_ON:
+            if state_code == PowerState.POWER_ON:
                 print("  Power state: ON")
-            elif state_code == POWER_OFF:
+            elif state_code == PowerState.POWER_OFF:
                 print("  Power state: OFF")
             else:
                 print(f"  Power state: 0x{state_code:02X} (unknown)")
@@ -107,7 +178,7 @@ class SICPProtocol:
 
         if response and response.is_data_response and response.data_payload:
             state_code = response.data_payload[0]
-            label = COLD_START_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+            label = _enum_label(ColdStartPowerState, state_code)
             print(f"  Cold-start power state: {label}")
             return state_code
 
@@ -117,7 +188,7 @@ class SICPProtocol:
     def set_cold_start_power_state(self, monitor_id, state_code):
         """Set cold-start power behavior."""
         message = build_cold_start_set_message(monitor_id, state_code)
-        label = COLD_START_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+        label = _enum_label(ColdStartPowerState, state_code)
         action = f"Set cold-start power state to {label}"
         logger.debug(f"Sending cold-start power state message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
@@ -245,7 +316,7 @@ class SICPProtocol:
 
             if payload:
                 style_code = payload[0]
-                style_name = PICTURE_STYLE_NAMES.get(style_code, f"0x{style_code:02X}")
+                style_name = _enum_label(PictureStyle, style_code)
                 print(f"  Picture style: {style_name}")
                 return style_code
 
@@ -255,7 +326,7 @@ class SICPProtocol:
     def set_picture_style(self, monitor_id, style_code):
         """Set the picture style to the provided code."""
         message = build_picture_style_set_message(monitor_id, style_code)
-        style_name = PICTURE_STYLE_NAMES.get(style_code, f"0x{style_code:02X}")
+        style_name = _enum_label(PictureStyle, style_code)
         logger.debug(f"Set picture style to {style_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -297,11 +368,8 @@ class SICPProtocol:
 
     def set_color_temperature_mode(self, monitor_id, mode_code):
         """Set the color temperature preset (SICP 8.11)."""
-        if not (0 <= mode_code <= 0xFF):
-            raise ValueError("Color temperature code must be between 0 and 255")
-
         message = build_color_temperature_set_message(monitor_id, mode_code)
-        label = COLOR_TEMPERATURE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+        label = _enum_label(ColorTemperatureMode, mode_code)
         logger.debug(f"Sending set color temperature to {label} to Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -320,7 +388,7 @@ class SICPProtocol:
 
             if payload:
                 mode_code = payload[0]
-                label = COLOR_TEMPERATURE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+                label = _enum_label(ColorTemperatureMode, mode_code)
                 print(f"  Color temperature: {label}")
                 return mode_code
 
@@ -331,11 +399,10 @@ class SICPProtocol:
         """Set User 2 color temperature in 100K steps (SICP 8.12)."""
         step_value, resolved_kelvin = _coerce_kelvin_to_step_value(kelvin_value)
 
-        user2_code = COLOR_TEMPERATURE_MODES.get('user2', 0x12)
-        if user2_code is not None:
-            if not self.set_color_temperature_mode(monitor_id, user2_code):
-                print("  Failed to set base color temperature to User 2; precise adjustment skipped")
-                return False
+        user2_code = ColorTemperatureMode.USER2.value
+        if not self.set_color_temperature_mode(monitor_id, user2_code):
+            print("  Failed to set base color temperature to User 2; precise adjustment skipped")
+            return False
 
         message = build_color_temperature_fine_set_message(monitor_id, step_value)
         action = f"Set precise color temperature to {resolved_kelvin}K"
@@ -381,7 +448,7 @@ class SICPProtocol:
 
             if payload:
                 pattern_code = payload[0]
-                pattern_name = TEST_PATTERN_NAMES.get(pattern_code, f"0x{pattern_code:02X}")
+                pattern_name = _enum_label(TestPattern, pattern_code)
                 print(f"  Test pattern: {pattern_name}")
                 return pattern_code
 
@@ -391,7 +458,7 @@ class SICPProtocol:
     def set_test_pattern(self, monitor_id, pattern_code):
         """Enable an internal test pattern (unsupported on some BDL models)."""
         message = build_test_pattern_set_message(monitor_id, pattern_code)
-        pattern_name = TEST_PATTERN_NAMES.get(pattern_code, f"0x{pattern_code:02X}")
+        pattern_name = _enum_label(TestPattern, pattern_code)
         logger.debug(f"Sending set test pattern to {pattern_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -410,7 +477,7 @@ class SICPProtocol:
 
             if payload:
                 state_code = payload[0]
-                state_name = REMOTE_LOCK_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+                state_name = _enum_label(RemoteLockState, state_code)
                 print(f"  Remote lock state: {state_name}")
                 return state_code
 
@@ -420,7 +487,7 @@ class SICPProtocol:
     def set_remote_lock_state(self, monitor_id, state_code):
         """Set the remote control/keypad lock mode."""
         message = build_remote_lock_set_message(monitor_id, state_code)
-        state_name = REMOTE_LOCK_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+        state_name = _enum_label(RemoteLockState, state_code)
         logger.debug(f"Sending set remote lock to {state_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -429,7 +496,7 @@ class SICPProtocol:
     def simulate_remote_key(self, monitor_id, key_code):
         """Simulate a button press on the remote control (SICP 7.2)."""
         message = build_remote_key_simulation_message(monitor_id, key_code)
-        key_name = REMOTE_KEY_NAMES.get(key_code, f"0x{key_code:02X}")
+        key_name = _enum_label(RemoteKey, key_code)
         logger.debug(f"Sending simulate remote key {key_name} to Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -448,7 +515,7 @@ class SICPProtocol:
 
             if payload:
                 mode_code = payload[0]
-                mode_name = POWER_ON_LOGO_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+                mode_name = _enum_label(PowerOnLogoMode, mode_code)
                 print(f"  Power-on logo: {mode_name}")
                 return mode_code
 
@@ -458,7 +525,7 @@ class SICPProtocol:
     def set_power_on_logo_mode(self, monitor_id, mode_code):
         """Set the power-on logo mode (SICP 11.1)."""
         message = build_power_on_logo_set_message(monitor_id, mode_code)
-        mode_name = POWER_ON_LOGO_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+        mode_name = _enum_label(PowerOnLogoMode, mode_code)
         logger.debug(f"Sending set power-on logo to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -511,7 +578,7 @@ class SICPProtocol:
 
             if payload:
                 mode_code = payload[0]
-                mode_name = AUTO_SIGNAL_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+                mode_name = _enum_label(AutoSignalMode, mode_code)
                 print(f"  Auto signal detection: {mode_name}")
                 return mode_code
 
@@ -524,7 +591,7 @@ class SICPProtocol:
             raise ValueError("Auto signal mode must be between 0 and 5")
 
         message = build_auto_signal_set_message(monitor_id, mode_code)
-        mode_name = AUTO_SIGNAL_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+        mode_name = _enum_label(AutoSignalMode, mode_code)
         logger.debug(f"Sending set auto signal detection to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -543,7 +610,7 @@ class SICPProtocol:
 
             if payload:
                 mode_code = payload[0]
-                mode_name = POWER_SAVE_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+                mode_name = _enum_label(PowerSaveMode, mode_code)
                 print(f"  Power save mode: {mode_name}")
                 return mode_code
 
@@ -553,7 +620,7 @@ class SICPProtocol:
     def set_power_save_mode(self, monitor_id, mode_code):
         """Set the display power save mode."""
         message = build_power_save_set_message(monitor_id, mode_code)
-        mode_name = POWER_SAVE_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+        mode_name = _enum_label(PowerSaveMode, mode_code)
         logger.debug(f"Sending set power save mode to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -572,7 +639,7 @@ class SICPProtocol:
 
             if payload:
                 level_code = payload[0]
-                level_name = SMART_POWER_LEVEL_NAMES.get(level_code, f"0x{level_code:02X}")
+                level_name = _enum_label(SmartPowerLevel, level_code)
                 print(f"  Smart power level: {level_name}")
                 return level_code
 
@@ -582,7 +649,7 @@ class SICPProtocol:
     def set_smart_power_level(self, monitor_id, level_code):
         """Set the smart power level."""
         message = build_smart_power_set_message(monitor_id, level_code)
-        level_name = SMART_POWER_LEVEL_NAMES.get(level_code, f"0x{level_code:02X}")
+        level_name = _enum_label(SmartPowerLevel, level_code)
         logger.debug(f"Sending set smart power level to {level_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -601,7 +668,7 @@ class SICPProtocol:
 
             if payload:
                 mode_code = payload[0]
-                mode_name = APM_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+                mode_name = _enum_label(ApmMode, mode_code)
                 print(f"  Advanced power management: {mode_name}")
                 return mode_code
 
@@ -611,7 +678,7 @@ class SICPProtocol:
     def set_apm_mode(self, monitor_id, mode_code):
         """Set the advanced power management mode."""
         message = build_apm_set_message(monitor_id, mode_code)
-        mode_name = APM_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+        mode_name = _enum_label(ApmMode, mode_code)
         logger.debug(f"Sending set advanced power management to {mode_name} for Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -683,7 +750,7 @@ class SICPProtocol:
         if response and response.is_data_response and len(response.data_payload) >= 1:
             # Response:  DATA[0]=0x71, DATA[1]=state (0x00=On, 0x01=Off)
             state_byte = response.data_payload[0]
-            state = "ON" if state_byte == BACKLIGHT_ON else "OFF"
+            state = "ON" if state_byte == 0x01 else "OFF"
             print(f"  Current backlight:  {state}")
             return state
         
@@ -716,7 +783,7 @@ class SICPProtocol:
         if response and response.is_data_response and len(response.data_payload) >= 1:
             # Response: DATA[0]=0xC6, DATA[1]=state (0x00=Disabled, 0x01=Enabled)
             state_byte = response.data_payload[0]
-            state = "ENABLED" if state_byte == ANDROID_4K_ENABLED else "DISABLED"
+            state = "ENABLED" if state_byte == 0x01 else "DISABLED"
             print(f"  Android 4K: {state}")
             return state
         
@@ -745,7 +812,7 @@ class SICPProtocol:
 
             if payload:
                 state_byte = payload[0]
-                state = "ON" if state_byte == WOL_ENABLED else "OFF"
+                state = "ON" if state_byte == 0x01 else "OFF"
                 print(f"  Wake on LAN: {state}")
                 return state
 
@@ -846,20 +913,25 @@ class SICPProtocol:
 
     def get_ip_parameter(self, monitor_id, parameter_name, value_type_name='current'):
         """Get IP parameter or MAC address information."""
-        if parameter_name not in IP_PARAMETER_CODES:
+        try:
+            parameter_member = _parse_enum_token(IPParameterCode, parameter_name)
+        except ValueError:
             print(f"✗ Unknown IP parameter '{parameter_name}'")
-            print(f"  Options: {', '.join(IP_PARAMETER_CODES.keys())}")
+            print(f"  Options: {', '.join(_enum_choice_names(IPParameterCode))}")
             return None
 
-        if value_type_name not in IP_PARAMETER_VALUE_TYPES:
-            print(f"✗ Unknown value type '{value_type_name}' (use current|queued)")
+        try:
+            value_type_member = _parse_enum_token(IPParameterValueType, value_type_name)
+        except ValueError:
+            options = '|'.join(_enum_choice_names(IPParameterValueType))
+            print(f"✗ Unknown value type '{value_type_name}' (use {options})")
             return None
 
-        parameter_code = IP_PARAMETER_CODES[parameter_name]
-        value_type_code = IP_PARAMETER_VALUE_TYPES[value_type_name]
+        parameter_code = parameter_member.value
+        value_type_code = value_type_member.value
 
         message = build_ip_parameter_get_message(monitor_id, parameter_code, value_type_code)
-        action = f"Get {parameter_name.upper()} ({value_type_name})"
+        action = f"Get {_enum_label(IPParameterCode, parameter_code).upper()} ({_enum_label(IPParameterValueType, value_type_code)})"
         logger.debug(f"Sending IP parameter get message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message, expect_data=True)
 
@@ -880,8 +952,8 @@ class SICPProtocol:
 
         formatted, ascii_text, raw_hex = _format_ip_parameter_value(reported_parameter, value_bytes)
 
-        param_label = IP_PARAMETER_NAMES.get(reported_parameter, f"0x{reported_parameter:02X}")
-        type_label = IP_PARAMETER_VALUE_TYPE_NAMES.get(reported_type, f"0x{reported_type:02X}")
+        param_label = _enum_label(IPParameterCode, reported_parameter)
+        type_label = _enum_label(IPParameterValueType, reported_type)
 
         print(f"  {param_label.upper()} [{type_label}]: {formatted}")
         if ascii_text and ascii_text != formatted:
@@ -892,16 +964,18 @@ class SICPProtocol:
 
     def set_input_source(self, monitor_id, input_source_name, playlist=0):
         """Set display input source."""
-        if input_source_name not in INPUT_SOURCES:
+        try:
+            input_member = _parse_enum_token(InputSource, input_source_name)
+        except ValueError:
             print(f"✗ Unknown input source: {input_source_name}")
-            print(f"Available sources: {', '.join(sorted(set(INPUT_SOURCES.keys())))}")
+            print(f"  Options: {', '.join(_enum_choice_names(InputSource))}")
             return False
-        
-        input_code = INPUT_SOURCES[input_source_name]
+
+        input_code = input_member.value
         message = build_input_source_message(monitor_id, input_code, playlist=playlist)
         
         playlist_info = f" (playlist {playlist})" if playlist > 0 else ""
-        action = f"Set input to {input_source_name. upper()}{playlist_info}"
+        action = f"Set input to {_enum_label(InputSource, input_code).upper()}{playlist_info}"
         logger.debug(f"Sending set input source message: {action} to Monitor ID {monitor_id}")
         response = self.send_message(message)
         return response and response.is_ack
@@ -927,7 +1001,7 @@ class SICPProtocol:
             input_code = response.data_payload[0]
             playlist = response.data_payload[1] if len(response.data_payload) > 1 else 0
             
-            input_name = INPUT_SOURCE_NAMES.get(input_code, f"unknown (0x{input_code:02x})")
+            input_name = _enum_label(InputSource, input_code)
             
             playlist_info = ""
             if playlist == 0x08:
@@ -935,7 +1009,7 @@ class SICPProtocol:
             elif playlist > 0:
                 playlist_info = f" (playlist/URL {playlist})"
             
-            print(f"  Current input: {input_name. upper()}{playlist_info}")
+            print(f"  Current input: {input_name.upper()}{playlist_info}")
             return input_name
         
         return None

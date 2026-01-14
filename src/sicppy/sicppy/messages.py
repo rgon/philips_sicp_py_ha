@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 # SICP message structure:      [size][monitor_id][group_id][command][param][checksum]
 # size = total message length (including size and checksum bytes)
 # monitor_id = 0-255 (0 for broadcast, 1-255 for specific display)
@@ -67,19 +69,15 @@ RESPONSE_NAV = 0x18   # Command not supported/available
 RESPONSE_NACK = 0x15  # Checksum/Format error
 
 # Power State Parameters
-POWER_OFF = 0x01
-POWER_ON = 0x02
+class PowerState(IntEnum):
+    POWER_OFF = 0x01
+    POWER_ON = 0x02
 
 # Cold-start Power States
-COLD_START_POWER_OFF = 0x00
-COLD_START_FORCED_ON = 0x01
-COLD_START_LAST_STATUS = 0x02
-
-COLD_START_STATE_NAMES = {
-    COLD_START_POWER_OFF: "power-off",
-    COLD_START_FORCED_ON: "forced-on",
-    COLD_START_LAST_STATUS: "last-status",
-}
+class ColdStartPowerState(IntEnum):
+    COLD_START_POWER_OFF = 0x00
+    COLD_START_FORCED_ON = 0x01
+    COLD_START_LAST_STATUS = 0x02
 
 
 SICP_INFO_LABELS = {
@@ -99,426 +97,224 @@ MODEL_INFO_LABELS = {
     0x06: "hdmi-switch2-version",
 }
 
-# Backlight State Parameters
-BACKLIGHT_ON = 0x00
-BACKLIGHT_OFF = 0x01
-
-# Android 4K Parameters
-ANDROID_4K_DISABLED = 0x00
-ANDROID_4K_ENABLED = 0x01
-
-# Wake on LAN Parameters
-WOL_DISABLED = 0x00
-WOL_ENABLED = 0x01
-
 # IP Parameter identifiers
-IP_PARAMETER_CODES = {
-    'ip': 0x01,
-    'subnet': 0x02,
-    'gateway': 0x03,
-    'dns1': 0x04,
-    'dns2': 0x05,
-    'eth-mac': 0x06,
-    'wifi-mac': 0x07,
-}
+class IPParameterCode(IntEnum):
+    IP = 0x01
+    SUBNET = 0x02
+    GATEWAY = 0x03
+    DNS1 = 0x04
+    DNS2 = 0x05
+    ETH_MAC = 0x06
+    WIFI_MAC = 0x07
 
-IP_PARAMETER_NAMES = {value: key for key, value in IP_PARAMETER_CODES.items()}
 
-IP_PARAMETER_VALUE_TYPES = {
-    'current': 0x01,
-    'queued': 0x02,
-}
-
-IP_PARAMETER_VALUE_TYPE_NAMES = {value: key for key, value in IP_PARAMETER_VALUE_TYPES.items()}
+class IPParameterValueType(IntEnum):
+    CURRENT = 0x01
+    QUEUED = 0x02
 
 # Group ID
 GROUP_ID = 0x00
 
-# Input Source Values (from SICP 5.1 specification)
-INPUT_SOURCES = {
-    'none': 0x00,
-    'video': 0x01,
-    'svideo': 0x02,
-    's-video': 0x02,
-    'component': 0x03,
-    'cvi2': 0x04,
-    'vga': 0x05,
-    'hdmi2': 0x06,
-    'displayport2': 0x07,
-    'usb2': 0x08,
-    'carddvi-d': 0x09,
-    'displayport1': 0x0A,
-    'cardops': 0x0B,
-    'usb1': 0x0C,
-    'hdmi':  0x0D,
-    'hdmi1': 0x0D,
-    'dvi-d': 0x0E,
-    'hdmi3': 0x0F,
-    'browser': 0x10,
-    'smartcms': 0x11,
-    'dms': 0x12,
-    'digitalmediaserver': 0x12,
-    'internalstorage': 0x13,
-    'mediaplayer': 0x16,
-    'pdfplayer': 0x17,
-    'custom': 0x18,
-    'customapp': 0x18,
-    'hdmi4': 0x19,
-    'vga2': 0x1A,
-    'vga3': 0x1B,
-    'iwb': 0x1C,
-    'cmndplay': 0x1D,
-    'cmndplayweb': 0x1D,
-    'home': 0x1E,
-    'launcher': 0x1E,
-    'usbtypec': 0x1F,
-    'usbc': 0x1F,
-    'kiosk': 0x20,
-    'smartinfo': 0x21,
-    'tuner': 0x22,
-    'googlecast': 0x23,
-    'interact': 0x24,
-    'usbtypec2': 0x25,
-    'usbc2': 0x25,
-    'screenshare': 0x26,
-}
+class InputSource(IntEnum):
+    NONE = 0x00
+    VIDEO = 0x01
+    SVIDEO = 0x02
+    COMPONENT = 0x03
+    CVI2 = 0x04
+    VGA = 0x05
+    HDMI2 = 0x06
+    DISPLAYPORT2 = 0x07
+    USB2 = 0x08
+    CARDDVI_D = 0x09
+    DISPLAYPORT1 = 0x0A
+    CARDOPS = 0x0B
+    USB1 = 0x0C
+    HDMI1 = 0x0D
+    DVI_D = 0x0E
+    HDMI3 = 0x0F
+    BROWSER = 0x10
+    SMARTCMS = 0x11
+    DMS = 0x12
+    INTERNALSTORAGE = 0x13
+    MEDIAPLAYER = 0x16
+    PDFPLAYER = 0x17
+    CUSTOMAPP = 0x18
+    HDMI4 = 0x19
+    VGA2 = 0x1A
+    VGA3 = 0x1B
+    IWB = 0x1C
+    CMNDPLAY = 0x1D
+    HOME = 0x1E
+    USBTYPEC = 0x1F
+    KIOSK = 0x20
+    SMARTINFO = 0x21
+    TUNER = 0x22
+    GOOGLECAST = 0x23
+    INTERACT = 0x24
+    USBTYPEC2 = 0x25
+    SCREENSHARE = 0x26
 
-# Reverse lookup for display
-INPUT_SOURCE_NAMES = {
-    0x00: 'none',
-    0x01: 'video',
-    0x02: 's-video',
-    0x03: 'component',
-    0x04: 'cvi2',
-    0x05: 'vga',
-    0x06: 'hdmi2',
-    0x07: 'displayport2',
-    0x08: 'usb2',
-    0x09: 'carddvi-d',
-    0x0A: 'displayport1',
-    0x0B: 'cardops',
-    0x0C: 'usb1',
-    0x0D: 'hdmi1',
-    0x0E:  'dvi-d',
-    0x0F: 'hdmi3',
-    0x10: 'browser',
-    0x11: 'smartcms',
-    0x12: 'dms',
-    0x13: 'internalstorage',
-    0x16: 'mediaplayer',
-    0x17: 'pdfplayer',
-    0x18: 'customapp',
-    0x19: 'hdmi4',
-    0x1A: 'vga2',
-    0x1B: 'vga3',
-    0x1C: 'iwb',
-    0x1D: 'cmndplayweb',
-    0x1E: 'home/launcher',
-    0x1F: 'usb-typec',
-    0x20: 'kiosk',
-    0x21: 'smartinfo',
-    0x22: 'tuner',
-    0x23: 'googlecast',
-    0x24: 'interact',
-    0x25: 'usb-typec2',
-    0x26: 'screenshare',
-}
+    S_VIDEO = SVIDEO
+    CUSTOM = CUSTOMAPP
+    CMNDPLAYWEB = CMNDPLAY
+    LAUNCHER = HOME
+    HDMI = HDMI1
+    USBC = USBTYPEC
+    DIGITALMEDIASERVER = DMS
+    USBC2 = USBTYPEC2
 
-PICTURE_STYLES = {
-    'highbright': 0x00,
-    'srgb': 0x01,
-    'vivid': 0x02,
-    'natural': 0x03,
-    'standard': 0x04,
-    'video': 0x05,
-    'static-signage': 0x06,
-    'text': 0x07,
-    'energy-saving': 0x08,
-    'soft': 0x09,
-    'user': 0x0A,
-}
+class PictureStyle(IntEnum):
+    HIGHBRIGHT = 0x00
+    SRGB = 0x01
+    VIVID = 0x02
+    NATURAL = 0x03
+    STANDARD = 0x04
+    VIDEO = 0x05
+    STATIC_SIGNAGE = 0x06
+    TEXT = 0x07
+    ENERGY_SAVING = 0x08
+    SOFT = 0x09
+    USER = 0x0A
 
-PICTURE_STYLE_NAMES = {value: key for key, value in PICTURE_STYLES.items()}
+class TestPattern(IntEnum):
+    OFF = 0x00
+    WHITE_100 = 0x01
+    WHITE = WHITE_100
+    RED = 0x02
+    GREEN = 0x03
+    BLUE = 0x04
+    BLACK = 0x05
+    HALF_WHITE_TOP = 0x06
+    HALF_WHITE_BOTTOM = 0x07
+    RAMP = 0x08
+    WHITE_12 = 0x09
+    WHITE_25 = 0x0A
+    WHITE_65 = 0x0B
 
-TEST_PATTERNS = {
-    'off': 0x00,
-    'white-100': 0x01,
-    'white': 0x01,
-    'red': 0x02,
-    'green': 0x03,
-    'blue': 0x04,
-    'black': 0x05,
-    'half-white-top': 0x06,
-    'half-white-bottom': 0x07,
-    'ramp': 0x08,
-    'white-12': 0x09,
-    'white-25': 0x0A,
-    'white-65': 0x0B,
-}
+class RemoteLockState(IntEnum):
+    UNLOCK_ALL = 0x01
+    LOCK_ALL = 0x02
+    LOCK_ALL_BUT_POWER = 0x03
+    LOCK_ALL_BUT_VOLUME = 0x04
+    PRIMARY = 0x05
+    SECONDARY = 0x06
+    LOCK_ALL_EXCEPT_POWER_VOLUME = 0x07
 
-TEST_PATTERN_NAMES = {
-    value: key for key, value in TEST_PATTERNS.items()
-    if key in {
-        'off',
-        'white-100',
-        'red',
-        'green',
-        'blue',
-        'black',
-        'half-white-top',
-        'half-white-bottom',
-        'ramp',
-        'white-12',
-        'white-25',
-        'white-65',
-    }
-}
 
-REMOTE_LOCK_STATES = {
-    'unlock-all': 0x01,
-    'lock-all': 0x02,
-    'lock-all-but-power': 0x03,
-    'lock-all-but-volume': 0x04,
-    'primary': 0x05,
-    'secondary': 0x06,
-    'lock-all-except-power-volume': 0x07,
-}
+class RemoteKey(IntEnum):
+    KEY_0 = 0x00
+    KEY_1 = 0x01
+    KEY_2 = 0x02
+    KEY_3 = 0x03
+    KEY_4 = 0x04
+    KEY_5 = 0x05
+    KEY_6 = 0x06
+    KEY_7 = 0x07
+    KEY_8 = 0x08
+    KEY_9 = 0x09
+    BACK = 0x0A
+    MUTE = 0x0D
+    INFO = 0x0F
+    VOL_PLUS = 0x10
+    VOL_MINUS = 0x11
+    FWD = 0x28
+    RWD = 0x2B
+    PLAY = 0x2C
+    PAUSE = 0x30
+    STOP = 0x31
+    SOURCES = 0x38
+    OPTIONS = 0x40
+    HOME = 0x54
+    ARROW_UP = 0x58
+    ARROW_DOWN = 0x59
+    ARROW_LEFT = 0x5A
+    ARROW_RIGHT = 0x5B
+    OK = 0x5C
+    RED = 0x6D
+    GREEN = 0x6E
+    YELLOW = 0x6F
+    BLUE = 0x70
+    LIST = 0x8B
+    ADJUST = 0x90
+    POWER_ON = 0xBE
+    POWER_OFF = 0xBF
+    FORMAT = 0xF5
 
-REMOTE_LOCK_STATE_NAMES = {
-    0x01: 'unlock-all',
-    0x02: 'lock-all',
-    0x03: 'lock-all-but-power',
-    0x04: 'lock-all-but-volume',
-    0x05: 'primary',
-    0x06: 'secondary',
-    0x07: 'lock-all-except-power-volume',
-}
+    VOLUME_UP = VOL_PLUS
+    VOLUME_DOWN = VOL_MINUS
+    VOL_PLUS_SYM = VOL_PLUS
+    VOL_MINUS_SYM = VOL_MINUS
+    FORWARD = FWD
+    REWIND = RWD
+    ENTER = OK
+    SELECT = OK
+    UP = ARROW_UP
+    DOWN = ARROW_DOWN
+    LEFT = ARROW_LEFT
+    RIGHT = ARROW_RIGHT
 
-REMOTE_KEY_CODES = {
-    'key-0': 0x00,
-    '0': 0x00,
-    'key-1': 0x01,
-    '1': 0x01,
-    'key-2': 0x02,
-    '2': 0x02,
-    'key-3': 0x03,
-    '3': 0x03,
-    'key-4': 0x04,
-    '4': 0x04,
-    'key-5': 0x05,
-    '5': 0x05,
-    'key-6': 0x06,
-    '6': 0x06,
-    'key-7': 0x07,
-    '7': 0x07,
-    'key-8': 0x08,
-    '8': 0x08,
-    'key-9': 0x09,
-    '9': 0x09,
-    'back': 0x0A,
-    'mute': 0x0D,
-    'info': 0x0F,
-    'vol+': 0x10,
-    'vol-plus': 0x10,
-    'volume-up': 0x10,
-    'vol-': 0x11,
-    'vol-minus': 0x11,
-    'volume-down': 0x11,
-    'fwd': 0x28,
-    'forward': 0x28,
-    'rwd': 0x2B,
-    'rewind': 0x2B,
-    'play': 0x2C,
-    'pause': 0x30,
-    'stop': 0x31,
-    'sources': 0x38,
-    'options': 0x40,
-    'home': 0x54,
-    'arrow-up': 0x58,
-    'up': 0x58,
-    'arrow-down': 0x59,
-    'down': 0x59,
-    'arrow-left': 0x5A,
-    'left': 0x5A,
-    'arrow-right': 0x5B,
-    'right': 0x5B,
-    'ok': 0x5C,
-    'enter': 0x5C,
-    'select': 0x5C,
-    'red': 0x6D,
-    'green': 0x6E,
-    'yellow': 0x6F,
-    'blue': 0x70,
-    'list': 0x8B,
-    'adjust': 0x90,
-    'power-on': 0xBE,
-    'power-off': 0xBF,
-    'format': 0xF5,
-}
+class PowerOnLogoMode(IntEnum):
+    OFF = 0x00
+    ON = 0x01
+    USER = 0x02
 
-REMOTE_KEY_NAMES = {
-    0x00: 'key-0',
-    0x01: 'key-1',
-    0x02: 'key-2',
-    0x03: 'key-3',
-    0x04: 'key-4',
-    0x05: 'key-5',
-    0x06: 'key-6',
-    0x07: 'key-7',
-    0x08: 'key-8',
-    0x09: 'key-9',
-    0x0A: 'back',
-    0x0D: 'mute',
-    0x0F: 'info',
-    0x10: 'vol+',
-    0x11: 'vol-',
-    0x28: 'fwd',
-    0x2B: 'rwd',
-    0x2C: 'play',
-    0x30: 'pause',
-    0x31: 'stop',
-    0x38: 'sources',
-    0x40: 'options',
-    0x54: 'home',
-    0x58: 'arrow-up',
-    0x59: 'arrow-down',
-    0x5A: 'arrow-left',
-    0x5B: 'arrow-right',
-    0x5C: 'ok',
-    0x6D: 'red',
-    0x6E: 'green',
-    0x6F: 'yellow',
-    0x70: 'blue',
-    0x8B: 'list',
-    0x90: 'adjust',
-    0xBE: 'power-on',
-    0xBF: 'power-off',
-    0xF5: 'format',
-}
 
-POWER_ON_LOGO_MODES = {
-    'off': 0x00,
-    'on': 0x01,
-    'user': 0x02,
-}
+class AutoSignalMode(IntEnum):
+    OFF = 0x00
+    ALL = 0x01
+    RESERVED = 0x02
+    PC_ONLY = 0x03
+    VIDEO_ONLY = 0x04
+    FAILOVER = 0x05
 
-POWER_ON_LOGO_MODE_NAMES = {
-    0x00: 'off',
-    0x01: 'on',
-    0x02: 'user',
-}
 
-AUTO_SIGNAL_MODES = {
-    'off': 0x00,
-    'all': 0x01,
-    'reserved': 0x02,
-    'pc-only': 0x03,
-    'pc-sources': 0x03,
-    'video-only': 0x04,
-    'video-sources': 0x04,
-    'failover': 0x05,
-}
+class ColorTemperatureMode(IntEnum):
+    USER1 = 0x00
+    NATIVE = 0x01
+    K11000 = 0x02
+    K10000 = 0x03
+    K9300 = 0x04
+    K7500 = 0x05
+    K6500 = 0x06
+    K5770 = 0x07
+    K5500 = 0x08
+    K5000 = 0x09
+    K4000 = 0x0A
+    K3400 = 0x0B
+    K3350 = 0x0C
+    K3000 = 0x0D
+    K2800 = 0x0E
+    K2600 = 0x0F
+    K1850 = 0x10
+    USER2 = 0x12
 
-AUTO_SIGNAL_MODE_NAMES = {
-    0x00: 'off',
-    0x01: 'all',
-    0x02: 'reserved',
-    0x03: 'pc-only',
-    0x04: 'video-only',
-    0x05: 'failover',
-}
+    USER_1 = USER1
+    USER_2 = USER2
 
-COLOR_TEMPERATURE_MODES = {
-    'user1': 0x00,
-    'user-1': 0x00,
-    'native': 0x01,
-    '11000k': 0x02,
-    '10000k': 0x03,
-    '9300k': 0x04,
-    '7500k': 0x05,
-    '6500k': 0x06,
-    '5770k': 0x07,
-    '5500k': 0x08,
-    '5000k': 0x09,
-    '4000k': 0x0A,
-    '3400k': 0x0B,
-    '3350k': 0x0C,
-    '3000k': 0x0D,
-    '2800k': 0x0E,
-    '2600k': 0x0F,
-    '1850k': 0x10,
-    'user2': 0x12,
-    'user-2': 0x12,
-}
+class PowerSaveMode(IntEnum):
+    RGB_OFF_VIDEO_OFF = 0x00
+    RGB_OFF_VIDEO_ON = 0x01
+    RGB_ON_VIDEO_OFF = 0x02
+    RGB_ON_VIDEO_ON = 0x03
+    MODE_1 = 0x04
+    MODE_2 = 0x05
+    MODE_3 = 0x06
+    MODE_4 = 0x07
 
-COLOR_TEMPERATURE_NAMES = {
-    0x00: 'user1',
-    0x01: 'native',
-    0x02: '11000K',
-    0x03: '10000K',
-    0x04: '9300K',
-    0x05: '7500K',
-    0x06: '6500K',
-    0x07: '5770K',
-    0x08: '5500K',
-    0x09: '5000K',
-    0x0A: '4000K',
-    0x0B: '3400K',
-    0x0C: '3350K',
-    0x0D: '3000K',
-    0x0E: '2800K',
-    0x0F: '2600K',
-    0x10: '1850K',
-    0x12: 'user2',
-}
 
-POWER_SAVE_MODES = {
-    'rgb-off-video-off': 0x00,
-    'rgb-off-video-on': 0x01,
-    'rgb-on-video-off': 0x02,
-    'rgb-on-video-on': 0x03,
-    'mode-1': 0x04,
-    'mode1': 0x04,
-    'mode-2': 0x05,
-    'mode2': 0x05,
-    'mode-3': 0x06,
-    'mode3': 0x06,
-    'mode-4': 0x07,
-    'mode4': 0x07,
-}
+class SmartPowerLevel(IntEnum):
+    OFF = 0x00
+    LOW = 0x01
+    MEDIUM = 0x02
+    HIGH = 0x03
 
-POWER_SAVE_MODE_NAMES = {value: key for key, value in POWER_SAVE_MODES.items()}
 
-SMART_POWER_LEVELS = {
-    'off': 0x00,
-    'low': 0x01,
-    'medium': 0x02,
-    'med': 0x02,
-    'high': 0x03,
-}
+class ApmMode(IntEnum):
+    OFF = 0x00
+    ON = 0x01
+    MODE1 = 0x02
+    MODE2 = 0x03
 
-SMART_POWER_LEVEL_NAMES = {
-    value: key for key, value in SMART_POWER_LEVELS.items()
-    if key in {'off', 'low', 'medium', 'high'}
-}
-
-APM_MODES = {
-    'off': 0x00,
-    'on': 0x01,
-    'mode1': 0x02,
-    'mode-1': 0x02,
-    'tcp-off-wol-on': 0x02,
-    'mode2': 0x03,
-    'mode-2': 0x03,
-    'tcp-on-wol-off': 0x03,
-}
-
-APM_MODE_NAMES = {
-    0x00: 'off',
-    0x01: 'on',
-    0x02: 'mode1',
-    0x03: 'mode2',
-}
 
 def calculate_checksum(*bytes_list):
     """Calculate XOR checksum of all bytes."""
@@ -531,7 +327,7 @@ def calculate_checksum(*bytes_list):
 def build_power_message(monitor_id, power_on):
     """Build SICP message for screen power control (set)."""
     msg_size = 0x06
-    param = POWER_ON if power_on else POWER_OFF
+    param = PowerState.POWER_ON if power_on else PowerState.POWER_OFF
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_SET, param)
     
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_SET, param, checksum])
@@ -954,7 +750,7 @@ def build_backlight_set_message(monitor_id, backlight_on):
     - 0x01 = Backlight Off
     """
     msg_size = 0x06
-    param = BACKLIGHT_ON if backlight_on else BACKLIGHT_OFF
+    param = 0x01 if backlight_on else 0x00
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_SET, param)
     
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_BACKLIGHT_SET, param, checksum])
@@ -1035,7 +831,7 @@ def build_android_4k_set_message(monitor_id, enable_4k):
     Available from SICP 2.11+ with displays that support this feature.
     """
     msg_size = 0x06
-    param = ANDROID_4K_ENABLED if enable_4k else ANDROID_4K_DISABLED
+    param = 0x01 if enable_4k else 0x00
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_SET, param)
     
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_ANDROID_4K_SET, param, checksum])
@@ -1065,7 +861,7 @@ def build_wol_get_message(monitor_id):
 def build_wol_set_message(monitor_id, enable_wol):
     """Build SICP message to set Wake on LAN status."""
     msg_size = 0x06
-    param = WOL_ENABLED if enable_wol else WOL_DISABLED
+    param = 0x01 if enable_wol else 0x00
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_WOL_SET, param)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_WOL_SET, param, checksum])
 

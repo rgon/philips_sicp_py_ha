@@ -1,15 +1,102 @@
 import sys
 
 from .ip_monitor import SICPIPMonitor
-from .protocol import _coerce_kelvin_to_step_value
-from .messages import COLD_START_POWER_OFF, COLD_START_FORCED_ON, COLD_START_LAST_STATUS, PICTURE_STYLES, COLOR_TEMPERATURE_MODES, \
-    POWER_SAVE_MODES, TEST_PATTERNS, REMOTE_LOCK_STATES, REMOTE_KEY_CODES, POWER_ON_LOGO_MODES, AUTO_SIGNAL_MODES, \
-    SMART_POWER_LEVELS, APM_MODES, IP_PARAMETER_CODES
+from .protocol import _coerce_kelvin_to_step_value, _enum_choice_names, _parse_enum_token
+from .messages import (
+    ColdStartPowerState,
+    PictureStyle,
+    ColorTemperatureMode,
+    TestPattern,
+    RemoteLockState,
+    RemoteKey,
+    PowerOnLogoMode,
+    AutoSignalMode,
+    PowerSaveMode,
+    SmartPowerLevel,
+    ApmMode,
+    IPParameterCode,
+    IPParameterValueType,
+)
 
 # Hardcoded display configuration
 DISPLAYS = {
     0: ("192.168.45.210", 1),  # Monitor ID 1
     1: ("192.168.45.211", 1),  # Monitor ID 1
+}
+
+
+def _normalize_choice(value):
+    return value.lower().replace('_', '-').replace(' ', '-').strip()
+
+
+def _enum_choice_list(enum_cls):
+    return _enum_choice_names(enum_cls)
+
+
+def _enum_choice_strings(enum_cls, aliases=None):
+    choices = list(_enum_choice_list(enum_cls))
+    if aliases:
+        choices.extend(aliases.keys())
+    # dict.fromkeys preserves insertion order while removing duplicates
+    return list(dict.fromkeys(sorted(choices)))
+
+
+def _resolve_enum_choice(enum_cls, raw_value, *, aliases=None, min_value=0, max_value=0xFF):
+    normalized = _normalize_choice(raw_value)
+    alias_map = aliases or {}
+    if normalized in alias_map:
+        return alias_map[normalized]
+
+    try:
+        return _parse_enum_token(enum_cls, raw_value).value
+    except ValueError:
+        pass
+
+    try:
+        parsed = int(raw_value, 0)
+    except ValueError:
+        parsed = None
+
+    if parsed is None or not (min_value <= parsed <= max_value):
+        raise ValueError(f"Invalid value '{raw_value}' for {enum_cls.__name__}")
+
+    return parsed
+
+
+AUTO_SIGNAL_ALIASES = {
+    'pc-sources': AutoSignalMode.PC_ONLY.value,
+    'video-sources': AutoSignalMode.VIDEO_ONLY.value,
+}
+
+POWER_SAVE_ALIASES = {
+    'mode1': PowerSaveMode.MODE_1.value,
+    'mode2': PowerSaveMode.MODE_2.value,
+    'mode3': PowerSaveMode.MODE_3.value,
+    'mode4': PowerSaveMode.MODE_4.value,
+}
+
+SMART_POWER_ALIASES = {
+    'med': SmartPowerLevel.MEDIUM.value,
+}
+
+APM_ALIASES = {
+    'mode-1': ApmMode.MODE1.value,
+    'tcp-off-wol-on': ApmMode.MODE1.value,
+    'mode-2': ApmMode.MODE2.value,
+    'tcp-on-wol-off': ApmMode.MODE2.value,
+}
+
+REMOTE_KEY_ALIASES = {
+    'vol+': RemoteKey.VOL_PLUS.value,
+    'vol-': RemoteKey.VOL_MINUS.value,
+    'volume+': RemoteKey.VOL_PLUS.value,
+    'volume-': RemoteKey.VOL_MINUS.value,
+    'volume-plus': RemoteKey.VOL_PLUS.value,
+    'volume-minus': RemoteKey.VOL_MINUS.value,
+    'volumeup': RemoteKey.VOL_PLUS.value,
+    'volup': RemoteKey.VOL_PLUS.value,
+    'voldown': RemoteKey.VOL_MINUS.value,
+    'volume-down': RemoteKey.VOL_MINUS.value,
 }
 
 def print_usage():
@@ -190,11 +277,11 @@ def main():
 
         mode = sys.argv[3].lower()
         if mode in {"off", "power-off", "0", "0x00"}:
-            cold_state = COLD_START_POWER_OFF
+            cold_state = ColdStartPowerState.COLD_START_POWER_OFF
         elif mode in {"forced", "forced-on", "on", "1", "0x01"}:
-            cold_state = COLD_START_FORCED_ON
+            cold_state = ColdStartPowerState.COLD_START_FORCED_ON
         elif mode in {"last", "last-status", "2", "0x02"}:
-            cold_state = COLD_START_LAST_STATUS
+            cold_state = ColdStartPowerState.COLD_START_LAST_STATUS
         else:
             print("Error: set-cold-start mode must be off|forced|last")
             sys.exit(1)
@@ -286,27 +373,17 @@ def main():
     elif command == "set-picture-style":
         if len(sys.argv) < 4:
             print("Error: set-picture-style requires a style name or numeric code")
-            print(f"Available styles: {', '.join(sorted(PICTURE_STYLES.keys()))}")
+            print(f"Available styles: {', '.join(_enum_choice_list(PictureStyle))}")
             sys.exit(1)
 
         style_arg_raw = sys.argv[3]
-        normalized = style_arg_raw.lower().replace('_', '-').strip()
-        style_code = None
 
-        if normalized in PICTURE_STYLES:
-            style_code = PICTURE_STYLES[normalized]
-        else:
-            try:
-                parsed = int(style_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown picture style. Use a known name or 0-255 code.")
-                print(f"Available styles: {', '.join(sorted(PICTURE_STYLES.keys()))}")
-                sys.exit(1)
-
-            style_code = parsed
+        try:
+            style_code = _resolve_enum_choice(PictureStyle, style_arg_raw)
+        except ValueError:
+            print("Error: Unknown picture style. Use a known name or 0-255 code.")
+            print(f"Available styles: {', '.join(_enum_choice_list(PictureStyle))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_picture_style(monitor.monitor_id, style_code):
@@ -355,16 +432,13 @@ def main():
         """
         if len(sys.argv) < 4:
             print("Error: set-color-temp requires a mode name or numeric code")
-            print(f"Available modes: {', '.join(sorted({'native', 'user1', 'user2', '6500k', '5000k'}))}")
+            print(f"Available modes: {', '.join(_enum_choice_list(ColorTemperatureMode))}")
             sys.exit(1)
 
         mode_arg_raw = sys.argv[3]
-        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
-        mode_code = None
-
-        if normalized in COLOR_TEMPERATURE_MODES:
-            mode_code = COLOR_TEMPERATURE_MODES[normalized]
-        else:
+        try:
+            mode_code = _parse_enum_token(ColorTemperatureMode, mode_arg_raw).value
+        except ValueError:
             try:
                 parsed = int(mode_arg_raw, 0)
             except ValueError:
@@ -372,6 +446,7 @@ def main():
 
             if parsed is None or not (0 <= parsed <= 0xFF):
                 print("Error: Color temperature must match a known preset name or be a 0-255 code")
+                print(f"Available modes: {', '.join(_enum_choice_list(ColorTemperatureMode))}")
                 sys.exit(1)
 
             mode_code = parsed
@@ -433,16 +508,13 @@ def main():
     elif command == "set-test-pattern":
         if len(sys.argv) < 4:
             print("Error: set-test-pattern requires a pattern name or numeric code")
-            print(f"Available patterns: {', '.join(sorted(set(TEST_PATTERNS.keys())))}")
+            print(f"Available patterns: {', '.join(_enum_choice_list(TestPattern))}")
             sys.exit(1)
 
         pattern_arg_raw = sys.argv[3]
-        normalized = pattern_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
-        pattern_code = None
-
-        if normalized in TEST_PATTERNS:
-            pattern_code = TEST_PATTERNS[normalized]
-        else:
+        try:
+            pattern_code = _parse_enum_token(TestPattern, pattern_arg_raw).value
+        except ValueError:
             try:
                 parsed = int(pattern_arg_raw, 0)
             except ValueError:
@@ -450,7 +522,7 @@ def main():
 
             if parsed is None or not (0 <= parsed <= 0xFF):
                 print("Error: Unknown test pattern. Use a known name or 0-255 code.")
-                print(f"Available patterns: {', '.join(sorted(set(TEST_PATTERNS.keys())))}")
+                print(f"Available patterns: {', '.join(_enum_choice_list(TestPattern))}")
                 sys.exit(1)
 
             pattern_code = parsed
@@ -467,27 +539,16 @@ def main():
     elif command == "set-remote-lock":
         if len(sys.argv) < 4:
             print("Error: set-remote-lock requires a mode name or numeric code")
-            print(f"Available modes: {', '.join(sorted(set(REMOTE_LOCK_STATES.keys())))}")
+            print(f"Available modes: {', '.join(_enum_choice_list(RemoteLockState))}")
             sys.exit(1)
 
         mode_arg_raw = sys.argv[3]
-        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
-        mode_code = None
-
-        if normalized in REMOTE_LOCK_STATES:
-            mode_code = REMOTE_LOCK_STATES[normalized]
-        else:
-            try:
-                parsed = int(mode_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
-                print(f"Available modes: {', '.join(sorted(set(REMOTE_LOCK_STATES.keys())))}")
-                sys.exit(1)
-
-            mode_code = parsed
+        try:
+            mode_code = _resolve_enum_choice(RemoteLockState, mode_arg_raw)
+        except ValueError:
+            print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
+            print(f"Available modes: {', '.join(_enum_choice_list(RemoteLockState))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_remote_lock_state(monitor.monitor_id, mode_code):
@@ -496,36 +557,20 @@ def main():
     elif command == "remote-key":
         if len(sys.argv) < 4:
             print("Error: remote-key requires a button name or numeric code")
-            print(f"Available keys: {', '.join(sorted(set(REMOTE_KEY_CODES.keys())))}")
+            print(f"Available keys: {', '.join(_enum_choice_strings(RemoteKey, REMOTE_KEY_ALIASES))}")
             sys.exit(1)
 
         key_arg_raw = sys.argv[3]
-        raw_lower = key_arg_raw.lower().strip()
-        candidates = {
-            raw_lower,
-            raw_lower.replace(' ', ''),
-            raw_lower.replace(' ', '-'),
-            raw_lower.replace('_', '-'),
-        }
-        key_code = None
-
-        for candidate in candidates:
-            if candidate in REMOTE_KEY_CODES:
-                key_code = REMOTE_KEY_CODES[candidate]
-                break
-
-        if key_code is None:
-            try:
-                parsed = int(key_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown remote key. Use a known name or 0-255 code.")
-                print(f"Available keys: {', '.join(sorted(set(REMOTE_KEY_CODES.keys())))}")
-                sys.exit(1)
-
-            key_code = parsed
+        try:
+            key_code = _resolve_enum_choice(
+                RemoteKey,
+                key_arg_raw,
+                aliases=REMOTE_KEY_ALIASES,
+            )
+        except ValueError:
+            print("Error: Unknown remote key. Use a known name or 0-255 code.")
+            print(f"Available keys: {', '.join(_enum_choice_strings(RemoteKey, REMOTE_KEY_ALIASES))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.simulate_remote_key(monitor.monitor_id, key_code):
@@ -539,26 +584,16 @@ def main():
     elif command == "set-power-on-logo":
         if len(sys.argv) < 4:
             print("Error: set-power-on-logo requires a mode name or numeric code")
-            print(f"Available modes: {', '.join(sorted(POWER_ON_LOGO_MODES.keys()))}")
+            print(f"Available modes: {', '.join(_enum_choice_list(PowerOnLogoMode))}")
             sys.exit(1)
 
         mode_arg_raw = sys.argv[3]
-        normalized = mode_arg_raw.lower().strip()
-        mode_code = None
-
-        if normalized in POWER_ON_LOGO_MODES:
-            mode_code = POWER_ON_LOGO_MODES[normalized]
-        else:
-            try:
-                parsed = int(mode_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown power-on logo mode. Use off|on|user or 0-255 code.")
-                sys.exit(1)
-
-            mode_code = parsed
+        try:
+            mode_code = _resolve_enum_choice(PowerOnLogoMode, mode_arg_raw)
+        except ValueError:
+            print("Error: Unknown power-on logo mode. Use off|on|user or 0-255 code.")
+            print(f"Available modes: {', '.join(_enum_choice_list(PowerOnLogoMode))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_power_on_logo_mode(monitor.monitor_id, mode_code):
@@ -604,26 +639,21 @@ def main():
     elif command == "set-auto-signal":
         if len(sys.argv) < 4:
             print("Error: set-auto-signal requires a mode name or numeric code (0-5)")
-            print(f"Available modes: {', '.join(sorted(set(AUTO_SIGNAL_MODES.keys())))}")
+            print(f"Available modes: {', '.join(_enum_choice_strings(AutoSignalMode, AUTO_SIGNAL_ALIASES))}")
             sys.exit(1)
 
         mode_arg_raw = sys.argv[3]
-        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
-        mode_code = None
-
-        if normalized in AUTO_SIGNAL_MODES:
-            mode_code = AUTO_SIGNAL_MODES[normalized]
-        else:
-            try:
-                parsed = int(mode_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0x05):
-                print("Error: Auto signal mode must be off|all|pc-only|video-only|failover or 0-5")
-                sys.exit(1)
-
-            mode_code = parsed
+        try:
+            mode_code = _resolve_enum_choice(
+                AutoSignalMode,
+                mode_arg_raw,
+                aliases=AUTO_SIGNAL_ALIASES,
+                max_value=0x05,
+            )
+        except ValueError:
+            print("Error: Auto signal mode must be off|all|pc-only|video-only|failover or 0-5")
+            print(f"Available modes: {', '.join(_enum_choice_strings(AutoSignalMode, AUTO_SIGNAL_ALIASES))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             try:
@@ -641,27 +671,20 @@ def main():
     elif command == "set-power-save":
         if len(sys.argv) < 4:
             print("Error: set-power-save requires a mode name or numeric code")
-            print(f"Available modes: {', '.join(sorted(POWER_SAVE_MODES.keys()))}")
+            print(f"Available modes: {', '.join(_enum_choice_strings(PowerSaveMode, POWER_SAVE_ALIASES))}")
             sys.exit(1)
 
         mode_arg_raw = sys.argv[3]
-        normalized = mode_arg_raw.lower().replace('_', '-').strip()
-        mode_code = None
-
-        if normalized in POWER_SAVE_MODES:
-            mode_code = POWER_SAVE_MODES[normalized]
-        else:
-            try:
-                parsed = int(mode_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown power save mode. Use a known name or 0-255 code.")
-                print(f"Available modes: {', '.join(sorted(POWER_SAVE_MODES.keys()))}")
-                sys.exit(1)
-
-            mode_code = parsed
+        try:
+            mode_code = _resolve_enum_choice(
+                PowerSaveMode,
+                mode_arg_raw,
+                aliases=POWER_SAVE_ALIASES,
+            )
+        except ValueError:
+            print("Error: Unknown power save mode. Use a known name or 0-255 code.")
+            print(f"Available modes: {', '.join(_enum_choice_strings(PowerSaveMode, POWER_SAVE_ALIASES))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_power_save_mode(monitor.monitor_id, mode_code):
@@ -675,26 +698,20 @@ def main():
     elif command == "set-smart-power":
         if len(sys.argv) < 4:
             print("Error: set-smart-power requires a level name or numeric code")
-            print(f"Available levels: {', '.join(sorted({'off', 'low', 'medium', 'high'}))}")
+            print(f"Available levels: {', '.join(_enum_choice_strings(SmartPowerLevel, SMART_POWER_ALIASES))}")
             sys.exit(1)
 
         level_arg_raw = sys.argv[3]
-        normalized = level_arg_raw.lower().strip()
-        level_code = None
-
-        if normalized in SMART_POWER_LEVELS:
-            level_code = SMART_POWER_LEVELS[normalized]
-        else:
-            try:
-                parsed = int(level_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown smart power level. Use off|low|medium|high or 0-255 code.")
-                sys.exit(1)
-
-            level_code = parsed
+        try:
+            level_code = _resolve_enum_choice(
+                SmartPowerLevel,
+                level_arg_raw,
+                aliases=SMART_POWER_ALIASES,
+            )
+        except ValueError:
+            print("Error: Unknown smart power level. Use off|low|medium|high or 0-255 code.")
+            print(f"Available levels: {', '.join(_enum_choice_strings(SmartPowerLevel, SMART_POWER_ALIASES))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_smart_power_level(monitor.monitor_id, level_code):
@@ -708,26 +725,20 @@ def main():
     elif command == "set-apm":
         if len(sys.argv) < 4:
             print("Error: set-apm requires a mode name or numeric code")
-            print(f"Available modes: {', '.join(sorted({'off', 'on', 'mode1', 'mode2'}))}")
+            print(f"Available modes: {', '.join(_enum_choice_strings(ApmMode, APM_ALIASES))}")
             sys.exit(1)
 
         apm_arg_raw = sys.argv[3]
-        normalized = apm_arg_raw.lower().replace('_', '-').strip()
-        apm_code = None
-
-        if normalized in APM_MODES:
-            apm_code = APM_MODES[normalized]
-        else:
-            try:
-                parsed = int(apm_arg_raw, 0)
-            except ValueError:
-                parsed = None
-
-            if parsed is None or not (0 <= parsed <= 0xFF):
-                print("Error: Unknown APM mode. Use off|on|mode1|mode2 or 0-255 code.")
-                sys.exit(1)
-
-            apm_code = parsed
+        try:
+            apm_code = _resolve_enum_choice(
+                ApmMode,
+                apm_arg_raw,
+                aliases=APM_ALIASES,
+            )
+        except ValueError:
+            print("Error: Unknown APM mode. Use off|on|mode1|mode2 or 0-255 code.")
+            print(f"Available modes: {', '.join(_enum_choice_strings(ApmMode, APM_ALIASES))}")
+            sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_apm_mode(monitor.monitor_id, apm_code):
@@ -853,7 +864,7 @@ def main():
     elif command == "get-ip":
         if len(sys.argv) < 4:
             print("Error: get-ip requires a parameter name")
-            print(f"Available parameters: {', '.join(IP_PARAMETER_CODES.keys())}")
+            print(f"Available parameters: {', '.join(_enum_choice_list(IPParameterCode))}")
             sys.exit(1)
 
         parameter_name = sys.argv[3].lower()
