@@ -53,6 +53,8 @@ CMD_REMOTE_LOCK_GET = 0x1D
 CMD_REMOTE_CONTROL_SIM = 0xFE
 CMD_POWER_ON_LOGO_SET = 0x3E
 CMD_POWER_ON_LOGO_GET = 0x3F
+CMD_OSD_INFO_SET = 0x2C
+CMD_OSD_INFO_GET = 0x2D
 CMD_GROUP_ID_SET = 0x5C
 CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
@@ -691,6 +693,27 @@ def build_power_on_logo_set_message(monitor_id, mode_code):
         GROUP_ID,
         CMD_POWER_ON_LOGO_SET,
         mode_code,
+        checksum,
+    ])
+
+
+def build_osd_info_get_message(monitor_id):
+    """Build SICP message to get information OSD timeout."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_GET, checksum])
+
+
+def build_osd_info_set_message(monitor_id, timeout_code):
+    """Build SICP message to set information OSD timeout."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_OSD_INFO_SET, timeout_code)
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_OSD_INFO_SET,
+        timeout_code,
         checksum,
     ])
 
@@ -1349,6 +1372,38 @@ def set_power_on_logo_mode(monitor_id, ip, mode_code):
     return response and response.is_ack
 
 
+def get_osd_info_timeout(monitor_id, ip):
+    """Retrieve the information OSD timeout (0=off, 1-60 seconds)."""
+    message = build_osd_info_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get information OSD", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_OSD_INFO_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            timeout_code = payload[0]
+            if timeout_code == 0:
+                print("  Information OSD: off")
+            else:
+                print(f"  Information OSD: {timeout_code} sec")
+            return timeout_code
+
+    return None
+
+
+def set_osd_info_timeout(monitor_id, ip, timeout_code):
+    """Set the information OSD timeout (0=off, 1-60 seconds)."""
+    if not (0 <= timeout_code <= 0x3C):
+        raise ValueError("OSD timeout must be 0 (off) or between 1 and 60 seconds")
+
+    message = build_osd_info_set_message(monitor_id, timeout_code)
+    label = "off" if timeout_code == 0 else f"{timeout_code} sec"
+    response = send_message(monitor_id, ip, message, f"Set information OSD to {label}")
+    return response and response.is_ack
+
+
 def get_power_save_mode(monitor_id, ip):
     """Retrieve the current power save mode."""
     message = build_power_save_get_message(monitor_id)
@@ -1800,6 +1855,8 @@ def print_usage():
     print("  remote-key <name>         Simulate remote control key press")
     print("  get-power-on-logo         Get power-on logo mode")
     print("  set-power-on-logo <mode>  Set power-on logo (off|on|user)")
+    print("  get-osd-info              Get information OSD timeout")
+    print("  set-osd-info <sec|off>    Set information OSD timeout (off|1-60)")
     print("  get-power-save            Get power save mode")
     print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
     print("  get-smart-power           Get smart power level")
@@ -2200,6 +2257,38 @@ def main():
         for (mon_ip, mon_id) in monitor_ids:
             if set_power_on_logo_mode(mon_id, mon_ip, mode_code):
                 success_count += 1
+
+    elif command == "get-osd-info":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_osd_info_timeout(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-osd-info":
+        if len(sys.argv) < 4:
+            print("Error: set-osd-info requires 'off' or a numeric timeout (1-60)")
+            sys.exit(1)
+
+        timeout_arg = sys.argv[3].strip().lower()
+        if timeout_arg in {"off", "0", "0x00"}:
+            timeout_code = 0
+        else:
+            try:
+                timeout_code = int(sys.argv[3], 0)
+            except ValueError:
+                print("Error: Timeout must be 'off' or an integer between 1 and 60")
+                sys.exit(1)
+
+        if timeout_code != 0 and not (1 <= timeout_code <= 60):
+            print("Error: Timeout must be 1-60 seconds or 'off'")
+            sys.exit(1)
+
+        for (mon_ip, mon_id) in monitor_ids:
+            try:
+                if set_osd_info_timeout(mon_id, mon_ip, timeout_code):
+                    success_count += 1
+            except ValueError as exc:
+                print(f"Error: {exc}")
+                sys.exit(1)
 
     elif command == "get-power-save":
         for (mon_ip, mon_id) in monitor_ids:
