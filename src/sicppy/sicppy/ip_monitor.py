@@ -27,7 +27,7 @@ class SICPIPMonitor(SICPProtocol):
         self.ip = ip
         self.monitor_id = monitor_id
 
-    def send_message(self, message, action_description, expect_data=False) -> SicpResponse | None:
+    def send_message(self, message, expect_data=False) -> SicpResponse | None:
         """
         Send SICP message to display and return parsed response.
         
@@ -35,7 +35,6 @@ class SICPIPMonitor(SICPProtocol):
             monitor_id: Monitor ID
             ip: IP address
             message: Message bytes to send
-            action_description: Description for logging
             expect_data: True if expecting data response (GET command), False for ACK (SET command)
         
         Returns:
