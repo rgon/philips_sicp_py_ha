@@ -45,6 +45,12 @@ CMD_AV_MUTE_GET = 0x7A
 CMD_AV_MUTE_SET = 0x7B
 CMD_PICTURE_STYLE_GET = 0x65
 CMD_PICTURE_STYLE_SET = 0x66
+CMD_POWER_SAVE_SET = 0xD2
+CMD_POWER_SAVE_GET = 0xD3
+CMD_SMART_POWER_SET = 0xDD
+CMD_SMART_POWER_GET = 0xDE
+CMD_APM_SET = 0xD0
+CMD_APM_GET = 0xD1
 CMD_VOLUME_SET = 0x44
 CMD_VOLUME_GET = 0x45
 CMD_MUTE_GET = 0x46
@@ -229,6 +235,54 @@ PICTURE_STYLES = {
 
 PICTURE_STYLE_NAMES = {value: key for key, value in PICTURE_STYLES.items()}
 
+POWER_SAVE_MODES = {
+    'rgb-off-video-off': 0x00,
+    'rgb-off-video-on': 0x01,
+    'rgb-on-video-off': 0x02,
+    'rgb-on-video-on': 0x03,
+    'mode-1': 0x04,
+    'mode1': 0x04,
+    'mode-2': 0x05,
+    'mode2': 0x05,
+    'mode-3': 0x06,
+    'mode3': 0x06,
+    'mode-4': 0x07,
+    'mode4': 0x07,
+}
+
+POWER_SAVE_MODE_NAMES = {value: key for key, value in POWER_SAVE_MODES.items()}
+
+SMART_POWER_LEVELS = {
+    'off': 0x00,
+    'low': 0x01,
+    'medium': 0x02,
+    'med': 0x02,
+    'high': 0x03,
+}
+
+SMART_POWER_LEVEL_NAMES = {
+    value: key for key, value in SMART_POWER_LEVELS.items()
+    if key in {'off', 'low', 'medium', 'high'}
+}
+
+APM_MODES = {
+    'off': 0x00,
+    'on': 0x01,
+    'mode1': 0x02,
+    'mode-1': 0x02,
+    'tcp-off-wol-on': 0x02,
+    'mode2': 0x03,
+    'mode-2': 0x03,
+    'tcp-on-wol-off': 0x03,
+}
+
+APM_MODE_NAMES = {
+    0x00: 'off',
+    0x01: 'on',
+    0x02: 'mode1',
+    0x03: 'mode2',
+}
+
 
 class SicpResponse:
     """Parse and represent a SICP response."""
@@ -398,6 +452,48 @@ def build_picture_style_set_message(monitor_id, style_code):
     msg_size = 0x06
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_PICTURE_STYLE_SET, style_code, checksum])
+
+
+def build_power_save_get_message(monitor_id):
+    """Build SICP message to query current power save mode."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_GET, checksum])
+
+
+def build_power_save_set_message(monitor_id, mode_code):
+    """Build SICP message to set power save mode."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_SAVE_SET, mode_code, checksum])
+
+
+def build_smart_power_get_message(monitor_id):
+    """Build SICP message to query smart power level."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_GET, checksum])
+
+
+def build_smart_power_set_message(monitor_id, level_code):
+    """Build SICP message to set smart power level."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_SET, level_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_SMART_POWER_SET, level_code, checksum])
+
+
+def build_apm_get_message(monitor_id):
+    """Build SICP message to query advanced power management state."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_APM_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_APM_GET, checksum])
+
+
+def build_apm_set_message(monitor_id, mode_code):
+    """Build SICP message to set advanced power management state."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_APM_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_APM_SET, mode_code, checksum])
 
 
 def build_model_info_get_message(monitor_id, label_code):
@@ -866,6 +962,87 @@ def set_picture_style(monitor_id, ip, style_code):
     return response and response.is_ack
 
 
+def get_power_save_mode(monitor_id, ip):
+    """Retrieve the current power save mode."""
+    message = build_power_save_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get power save mode", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_POWER_SAVE_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            mode_code = payload[0]
+            mode_name = POWER_SAVE_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+            print(f"  Power save mode: {mode_name}")
+            return mode_code
+
+    return None
+
+
+def set_power_save_mode(monitor_id, ip, mode_code):
+    """Set the display power save mode."""
+    message = build_power_save_set_message(monitor_id, mode_code)
+    mode_name = POWER_SAVE_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set power save mode to {mode_name}")
+    return response and response.is_ack
+
+
+def get_smart_power_level(monitor_id, ip):
+    """Retrieve the current smart power level."""
+    message = build_smart_power_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get smart power level", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_SMART_POWER_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            level_code = payload[0]
+            level_name = SMART_POWER_LEVEL_NAMES.get(level_code, f"0x{level_code:02X}")
+            print(f"  Smart power level: {level_name}")
+            return level_code
+
+    return None
+
+
+def set_smart_power_level(monitor_id, ip, level_code):
+    """Set the smart power level."""
+    message = build_smart_power_set_message(monitor_id, level_code)
+    level_name = SMART_POWER_LEVEL_NAMES.get(level_code, f"0x{level_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set smart power level to {level_name}")
+    return response and response.is_ack
+
+
+def get_apm_mode(monitor_id, ip):
+    """Retrieve the current advanced power management mode."""
+    message = build_apm_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get advanced power management", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_APM_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            mode_code = payload[0]
+            mode_name = APM_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+            print(f"  Advanced power management: {mode_name}")
+            return mode_code
+
+    return None
+
+
+def set_apm_mode(monitor_id, ip, mode_code):
+    """Set the advanced power management mode."""
+    message = build_apm_set_message(monitor_id, mode_code)
+    mode_name = APM_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set advanced power management to {mode_name}")
+    return response and response.is_ack
+
+
 def backlight_control(monitor_id, ip, backlight_on):
     """Control display backlight state."""
     message = build_backlight_set_message(monitor_id, backlight_on)
@@ -1174,6 +1351,12 @@ def print_usage():
     print("  get-video-signal          Check if active input has signal")
     print("  get-picture-style         Get current picture style")
     print("  set-picture-style <name>  Set picture style (highbright, srgb, ...)")
+    print("  get-power-save            Get power save mode")
+    print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
+    print("  get-smart-power           Get smart power level")
+    print("  set-smart-power <level>   Set smart power level (off|low|medium|high)")
+    print("  get-apm                   Get advanced power management mode")
+    print("  set-apm <mode>            Set advanced power management (off|on|mode1|mode2)")
     print("  backlight-on              Turn backlight on")
     print("  backlight-off             Turn backlight off")
     print("  get-backlight             Get current backlight state")
@@ -1425,6 +1608,106 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if set_picture_style(mon_id, mon_ip, style_code):
+                success_count += 1
+
+    elif command == "get-power-save":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_power_save_mode(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-power-save":
+        if len(sys.argv) < 4:
+            print("Error: set-power-save requires a mode name or numeric code")
+            print(f"Available modes: {', '.join(sorted(POWER_SAVE_MODES.keys()))}")
+            sys.exit(1)
+
+        mode_arg_raw = sys.argv[3]
+        normalized = mode_arg_raw.lower().replace('_', '-').strip()
+        mode_code = None
+
+        if normalized in POWER_SAVE_MODES:
+            mode_code = POWER_SAVE_MODES[normalized]
+        else:
+            try:
+                parsed = int(mode_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown power save mode. Use a known name or 0-255 code.")
+                print(f"Available modes: {', '.join(sorted(POWER_SAVE_MODES.keys()))}")
+                sys.exit(1)
+
+            mode_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_power_save_mode(mon_id, mon_ip, mode_code):
+                success_count += 1
+
+    elif command == "get-smart-power":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_smart_power_level(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-smart-power":
+        if len(sys.argv) < 4:
+            print("Error: set-smart-power requires a level name or numeric code")
+            print(f"Available levels: {', '.join(sorted({'off', 'low', 'medium', 'high'}))}")
+            sys.exit(1)
+
+        level_arg_raw = sys.argv[3]
+        normalized = level_arg_raw.lower().strip()
+        level_code = None
+
+        if normalized in SMART_POWER_LEVELS:
+            level_code = SMART_POWER_LEVELS[normalized]
+        else:
+            try:
+                parsed = int(level_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown smart power level. Use off|low|medium|high or 0-255 code.")
+                sys.exit(1)
+
+            level_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_smart_power_level(mon_id, mon_ip, level_code):
+                success_count += 1
+
+    elif command == "get-apm":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_apm_mode(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-apm":
+        if len(sys.argv) < 4:
+            print("Error: set-apm requires a mode name or numeric code")
+            print(f"Available modes: {', '.join(sorted({'off', 'on', 'mode1', 'mode2'}))}")
+            sys.exit(1)
+
+        apm_arg_raw = sys.argv[3]
+        normalized = apm_arg_raw.lower().replace('_', '-').strip()
+        apm_code = None
+
+        if normalized in APM_MODES:
+            apm_code = APM_MODES[normalized]
+        else:
+            try:
+                parsed = int(apm_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown APM mode. Use off|on|mode1|mode2 or 0-255 code.")
+                sys.exit(1)
+
+            apm_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_apm_mode(mon_id, mon_ip, apm_code):
                 success_count += 1
 
     elif command == "get-volume":
