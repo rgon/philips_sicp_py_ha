@@ -48,6 +48,9 @@ CMD_PICTURE_STYLE_SET = 0x66
 CMD_MONITOR_ID_SET = 0x69
 CMD_TEST_PATTERN_GET = 0x6C
 CMD_TEST_PATTERN_SET = 0x6D
+CMD_REMOTE_LOCK_SET = 0x1C
+CMD_REMOTE_LOCK_GET = 0x1D
+CMD_REMOTE_CONTROL_SIM = 0xFE
 CMD_GROUP_ID_SET = 0x5C
 CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
@@ -272,6 +275,128 @@ TEST_PATTERN_NAMES = {
         'white-25',
         'white-65',
     }
+}
+
+REMOTE_LOCK_STATES = {
+    'unlock-all': 0x01,
+    'lock-all': 0x02,
+    'lock-all-but-power': 0x03,
+    'lock-all-but-volume': 0x04,
+    'primary': 0x05,
+    'secondary': 0x06,
+    'lock-all-except-power-volume': 0x07,
+}
+
+REMOTE_LOCK_STATE_NAMES = {
+    0x01: 'unlock-all',
+    0x02: 'lock-all',
+    0x03: 'lock-all-but-power',
+    0x04: 'lock-all-but-volume',
+    0x05: 'primary',
+    0x06: 'secondary',
+    0x07: 'lock-all-except-power-volume',
+}
+
+REMOTE_KEY_CODES = {
+    'key-0': 0x00,
+    '0': 0x00,
+    'key-1': 0x01,
+    '1': 0x01,
+    'key-2': 0x02,
+    '2': 0x02,
+    'key-3': 0x03,
+    '3': 0x03,
+    'key-4': 0x04,
+    '4': 0x04,
+    'key-5': 0x05,
+    '5': 0x05,
+    'key-6': 0x06,
+    '6': 0x06,
+    'key-7': 0x07,
+    '7': 0x07,
+    'key-8': 0x08,
+    '8': 0x08,
+    'key-9': 0x09,
+    '9': 0x09,
+    'back': 0x0A,
+    'mute': 0x0D,
+    'info': 0x0F,
+    'vol+': 0x10,
+    'vol-plus': 0x10,
+    'volume-up': 0x10,
+    'vol-': 0x11,
+    'vol-minus': 0x11,
+    'volume-down': 0x11,
+    'fwd': 0x28,
+    'forward': 0x28,
+    'rwd': 0x2B,
+    'rewind': 0x2B,
+    'play': 0x2C,
+    'pause': 0x30,
+    'stop': 0x31,
+    'sources': 0x38,
+    'options': 0x40,
+    'home': 0x54,
+    'arrow-up': 0x58,
+    'up': 0x58,
+    'arrow-down': 0x59,
+    'down': 0x59,
+    'arrow-left': 0x5A,
+    'left': 0x5A,
+    'arrow-right': 0x5B,
+    'right': 0x5B,
+    'ok': 0x5C,
+    'enter': 0x5C,
+    'select': 0x5C,
+    'red': 0x6D,
+    'green': 0x6E,
+    'yellow': 0x6F,
+    'blue': 0x70,
+    'list': 0x8B,
+    'adjust': 0x90,
+    'power-on': 0xBE,
+    'power-off': 0xBF,
+    'format': 0xF5,
+}
+
+REMOTE_KEY_NAMES = {
+    0x00: 'key-0',
+    0x01: 'key-1',
+    0x02: 'key-2',
+    0x03: 'key-3',
+    0x04: 'key-4',
+    0x05: 'key-5',
+    0x06: 'key-6',
+    0x07: 'key-7',
+    0x08: 'key-8',
+    0x09: 'key-9',
+    0x0A: 'back',
+    0x0D: 'mute',
+    0x0F: 'info',
+    0x10: 'vol+',
+    0x11: 'vol-',
+    0x28: 'fwd',
+    0x2B: 'rwd',
+    0x2C: 'play',
+    0x30: 'pause',
+    0x31: 'stop',
+    0x38: 'sources',
+    0x40: 'options',
+    0x54: 'home',
+    0x58: 'arrow-up',
+    0x59: 'arrow-down',
+    0x5A: 'arrow-left',
+    0x5B: 'arrow-right',
+    0x5C: 'ok',
+    0x6D: 'red',
+    0x6E: 'green',
+    0x6F: 'yellow',
+    0x70: 'blue',
+    0x8B: 'list',
+    0x90: 'adjust',
+    0xBE: 'power-on',
+    0xBF: 'power-off',
+    0xF5: 'format',
 }
 
 POWER_SAVE_MODES = {
@@ -510,6 +635,50 @@ def build_test_pattern_set_message(monitor_id, pattern_code):
         GROUP_ID,
         CMD_TEST_PATTERN_SET,
         pattern_code,
+        checksum,
+    ])
+
+
+def build_remote_lock_get_message(monitor_id):
+    """Build SICP message to get remote control lock status."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_GET, checksum])
+
+
+def build_remote_lock_set_message(monitor_id, state_code):
+    """Build SICP message to set remote control/keypad lock state."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_REMOTE_LOCK_SET, state_code)
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_REMOTE_LOCK_SET,
+        state_code,
+        checksum,
+    ])
+
+
+def build_remote_key_simulation_message(monitor_id, key_code):
+    """Build SICP message to simulate a remote control button press."""
+    msg_size = 0x07
+    reserved = 0x00
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_REMOTE_CONTROL_SIM,
+        key_code,
+        reserved,
+    )
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_REMOTE_CONTROL_SIM,
+        key_code,
+        reserved,
         checksum,
     ])
 
@@ -1083,6 +1252,41 @@ def set_test_pattern(monitor_id, ip, pattern_code):
     return response and response.is_ack
 
 
+def get_remote_lock_state(monitor_id, ip):
+    """Retrieve the current remote control/keypad lock mode."""
+    message = build_remote_lock_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get remote lock state", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_REMOTE_LOCK_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            state_code = payload[0]
+            state_name = REMOTE_LOCK_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+            print(f"  Remote lock state: {state_name}")
+            return state_code
+
+    return None
+
+
+def set_remote_lock_state(monitor_id, ip, state_code):
+    """Set the remote control/keypad lock mode."""
+    message = build_remote_lock_set_message(monitor_id, state_code)
+    state_name = REMOTE_LOCK_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set remote lock to {state_name}")
+    return response and response.is_ack
+
+
+def simulate_remote_key(monitor_id, ip, key_code):
+    """Simulate a button press on the remote control (SICP 7.2)."""
+    message = build_remote_key_simulation_message(monitor_id, key_code)
+    key_name = REMOTE_KEY_NAMES.get(key_code, f"0x{key_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Simulate remote key {key_name}")
+    return response and response.is_ack
+
+
 def get_power_save_mode(monitor_id, ip):
     """Retrieve the current power save mode."""
     message = build_power_save_get_message(monitor_id)
@@ -1529,6 +1733,9 @@ def print_usage():
     print("  set-picture-style <name>  Set picture style (highbright, srgb, ...)")
     print("  get-test-pattern          Get current internal test pattern")
     print("  set-test-pattern <name>   Set internal test pattern (off|white|red|...)")
+    print("  get-remote-lock           Get remote control/keypad lock state")
+    print("  set-remote-lock <mode>    Set remote lock (unlock-all|lock-all|...)")
+    print("  remote-key <name>         Simulate remote control key press")
     print("  get-power-save            Get power save mode")
     print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
     print("  get-smart-power           Get smart power level")
@@ -1823,6 +2030,78 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if set_test_pattern(mon_id, mon_ip, pattern_code):
+                success_count += 1
+
+    elif command == "get-remote-lock":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_remote_lock_state(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-remote-lock":
+        if len(sys.argv) < 4:
+            print("Error: set-remote-lock requires a mode name or numeric code")
+            print(f"Available modes: {', '.join(sorted(set(REMOTE_LOCK_STATES.keys())))}")
+            sys.exit(1)
+
+        mode_arg_raw = sys.argv[3]
+        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
+        mode_code = None
+
+        if normalized in REMOTE_LOCK_STATES:
+            mode_code = REMOTE_LOCK_STATES[normalized]
+        else:
+            try:
+                parsed = int(mode_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
+                print(f"Available modes: {', '.join(sorted(set(REMOTE_LOCK_STATES.keys())))}")
+                sys.exit(1)
+
+            mode_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_remote_lock_state(mon_id, mon_ip, mode_code):
+                success_count += 1
+
+    elif command == "remote-key":
+        if len(sys.argv) < 4:
+            print("Error: remote-key requires a button name or numeric code")
+            print(f"Available keys: {', '.join(sorted(set(REMOTE_KEY_CODES.keys())))}")
+            sys.exit(1)
+
+        key_arg_raw = sys.argv[3]
+        raw_lower = key_arg_raw.lower().strip()
+        candidates = {
+            raw_lower,
+            raw_lower.replace(' ', ''),
+            raw_lower.replace(' ', '-'),
+            raw_lower.replace('_', '-'),
+        }
+        key_code = None
+
+        for candidate in candidates:
+            if candidate in REMOTE_KEY_CODES:
+                key_code = REMOTE_KEY_CODES[candidate]
+                break
+
+        if key_code is None:
+            try:
+                parsed = int(key_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Unknown remote key. Use a known name or 0-255 code.")
+                print(f"Available keys: {', '.join(sorted(set(REMOTE_KEY_CODES.keys())))}")
+                sys.exit(1)
+
+            key_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if simulate_remote_key(mon_id, mon_ip, key_code):
                 success_count += 1
 
     elif command == "get-power-save":
