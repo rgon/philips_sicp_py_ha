@@ -34,6 +34,8 @@ CMD_ANDROID_4K_SET = 0xC7
 CMD_WOL_GET = 0x9C
 CMD_WOL_SET = 0x9D
 CMD_IP_PARAMETER_GET = 0x82
+CMD_COLD_START_SET = 0xA3
+CMD_COLD_START_GET = 0xA4
 CMD_VOLUME_SET = 0x44
 CMD_VOLUME_GET = 0x45
 CMD_MUTE_GET = 0x46
@@ -47,6 +49,17 @@ RESPONSE_NACK = 0x15  # Checksum/Format error
 # Power State Parameters
 POWER_OFF = 0x01
 POWER_ON = 0x02
+
+# Cold-start Power States
+COLD_START_POWER_OFF = 0x00
+COLD_START_FORCED_ON = 0x01
+COLD_START_LAST_STATUS = 0x02
+
+COLD_START_STATE_NAMES = {
+    COLD_START_POWER_OFF: "power-off",
+    COLD_START_FORCED_ON: "forced-on",
+    COLD_START_LAST_STATUS: "last-status",
+}
 
 # Backlight State Parameters
 BACKLIGHT_ON = 0x00
@@ -258,6 +271,20 @@ def build_power_get_message(monitor_id):
     msg_size = 0x05
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_GET)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_POWER_STATE_GET, checksum])
+
+
+def build_cold_start_get_message(monitor_id):
+    """Build SICP message to query cold-start power state."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLD_START_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLD_START_GET, checksum])
+
+
+def build_cold_start_set_message(monitor_id, cold_state):
+    """Build SICP message to set cold-start power behavior."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLD_START_SET, cold_state, checksum])
 
 
 def build_backlight_set_message(monitor_id, backlight_on):
@@ -541,6 +568,29 @@ def get_power_state(monitor_id, ip):
     return None
 
 
+def get_cold_start_power_state(monitor_id, ip):
+    """Query cold-start power behavior (0x00 off, 0x01 forced on, 0x02 last status)."""
+    message = build_cold_start_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get cold-start power state", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        state_code = response.data_payload[0]
+        label = COLD_START_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+        print(f"  Cold-start power state: {label}")
+        return state_code
+
+    return None
+
+
+def set_cold_start_power_state(monitor_id, ip, state_code):
+    """Set cold-start power behavior."""
+    message = build_cold_start_set_message(monitor_id, state_code)
+    label = COLD_START_STATE_NAMES.get(state_code, f"0x{state_code:02X}")
+    action = f"Set cold-start power state to {label}"
+    response = send_message(monitor_id, ip, message, action)
+    return response and response.is_ack
+
+
 def backlight_control(monitor_id, ip, backlight_on):
     """Control display backlight state."""
     message = build_backlight_set_message(monitor_id, backlight_on)
@@ -814,6 +864,8 @@ def print_usage():
     print("  off                       Turn screen off")
     print("  set-power <on|off>        Explicit power set command")
     print("  get-power                 Get current power state")
+    print("  get-cold-start            Get cold-start power behavior")
+    print("  set-cold-start <mode>     Set cold-start power (off|forced|last)")
     print("  backlight-on              Turn backlight on")
     print("  backlight-off             Turn backlight off")
     print("  get-backlight             Get current backlight state")
@@ -940,6 +992,31 @@ def main():
     elif command == "get-power":
         for (mon_ip, mon_id) in monitor_ids:
             if get_power_state(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "get-cold-start":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_cold_start_power_state(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-cold-start":
+        if len(sys.argv) < 4:
+            print("Error: set-cold-start requires a mode (off|forced|last)")
+            sys.exit(1)
+
+        mode = sys.argv[3].lower()
+        if mode in {"off", "power-off", "0", "0x00"}:
+            cold_state = COLD_START_POWER_OFF
+        elif mode in {"forced", "forced-on", "on", "1", "0x01"}:
+            cold_state = COLD_START_FORCED_ON
+        elif mode in {"last", "last-status", "2", "0x02"}:
+            cold_state = COLD_START_LAST_STATUS
+        else:
+            print("Error: set-cold-start mode must be off|forced|last")
+            sys.exit(1)
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_cold_start_power_state(mon_id, mon_ip, cold_state):
                 success_count += 1
 
     elif command == "get-volume":
