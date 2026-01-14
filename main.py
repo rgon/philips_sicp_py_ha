@@ -41,6 +41,10 @@ CMD_SICP_INFO_GET = 0xA2
 CMD_MODEL_INFO_GET = 0xA1
 CMD_SERIAL_GET = 0x15
 CMD_VIDEO_SIGNAL_GET = 0x59
+CMD_AV_MUTE_GET = 0x7A
+CMD_AV_MUTE_SET = 0x7B
+CMD_PICTURE_STYLE_GET = 0x65
+CMD_PICTURE_STYLE_SET = 0x66
 CMD_VOLUME_SET = 0x44
 CMD_VOLUME_GET = 0x45
 CMD_MUTE_GET = 0x46
@@ -349,6 +353,21 @@ def build_video_signal_get_message(monitor_id):
     msg_size = 0x05
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_VIDEO_SIGNAL_GET, checksum])
+
+
+def build_av_mute_get_message(monitor_id):
+    """Build SICP message to query A/V mute state."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_GET, checksum])
+
+
+def build_av_mute_set_message(monitor_id, mute_on):
+    """Build SICP message to set A/V mute state."""
+    msg_size = 0x06
+    param = 0x01 if mute_on else 0x00
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AV_MUTE_SET, param, checksum])
 
 
 def build_model_info_get_message(monitor_id, label_code):
@@ -933,6 +952,32 @@ def get_mute_status(monitor_id, ip):
     return None
 
 
+def set_av_mute(monitor_id, ip, mute_on):
+    """Enable or disable A/V mute (backlight, audio, touch)."""
+    message = build_av_mute_set_message(monitor_id, mute_on)
+    action = "A/V Mute ON" if mute_on else "A/V Mute OFF"
+    response = send_message(monitor_id, ip, message, action)
+    return response and response.is_ack
+
+
+def get_av_mute_status(monitor_id, ip):
+    """Retrieve current A/V mute state."""
+    message = build_av_mute_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get A/V mute", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_AV_MUTE_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            av_mute_on = payload[0] == 0x01
+            print(f"  A/V Mute: {'ON' if av_mute_on else 'OFF'}")
+            return av_mute_on
+
+    return None
+
+
 def _format_ip_parameter_value(parameter_code, value_bytes):
     ascii_text = ''.join(chr(b) for b in value_bytes if 32 <= b <= 126)
     raw_hex = ''.join(f"{b:02X}" for b in value_bytes)
@@ -1083,6 +1128,8 @@ def print_usage():
     print("  set-volume <spk> [out]    Set speaker/audio-out volume (0-100 or nc)")
     print("  get-mute                  Get mute status")
     print("  mute-on|mute-off          Enable or disable mute")
+    print("  get-av-mute               Get A/V mute status")
+    print("  av-mute-on|av-mute-off    Enable or disable A/V mute")
     print("  get-ip <param> [type]     Get IP/MAC info (type=current|queued)")
     print("  input <source> [playlist] Set input source (optional playlist 1-7)")
     print("  get-input                 Get current input source")
@@ -1332,6 +1379,21 @@ def main():
     elif command == "mute-off":
         for (mon_ip, mon_id) in monitor_ids:
             if set_mute(mon_id, mon_ip, False):
+                success_count += 1
+
+    elif command == "get-av-mute":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_av_mute_status(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "av-mute-on":
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_av_mute(mon_id, mon_ip, True):
+                success_count += 1
+
+    elif command == "av-mute-off":
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_av_mute(mon_id, mon_ip, False):
                 success_count += 1
 
     elif command == "get-ip":
