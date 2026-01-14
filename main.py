@@ -46,6 +46,12 @@ CMD_AV_MUTE_SET = 0x7B
 CMD_PICTURE_STYLE_GET = 0x65
 CMD_PICTURE_STYLE_SET = 0x66
 CMD_MONITOR_ID_SET = 0x69
+CMD_VIDEO_PARAMETERS_SET = 0x32
+CMD_VIDEO_PARAMETERS_GET = 0x33
+CMD_COLOR_TEMPERATURE_SET = 0x34
+CMD_COLOR_TEMPERATURE_GET = 0x35
+CMD_COLOR_TEMPERATURE_FINE_SET = 0x11
+CMD_COLOR_TEMPERATURE_FINE_GET = 0x12
 CMD_TEST_PATTERN_GET = 0x6C
 CMD_TEST_PATTERN_SET = 0x6D
 CMD_REMOTE_LOCK_SET = 0x1C
@@ -437,6 +443,50 @@ AUTO_SIGNAL_MODE_NAMES = {
     0x05: 'failover',
 }
 
+COLOR_TEMPERATURE_MODES = {
+    'user1': 0x00,
+    'user-1': 0x00,
+    'native': 0x01,
+    '11000k': 0x02,
+    '10000k': 0x03,
+    '9300k': 0x04,
+    '7500k': 0x05,
+    '6500k': 0x06,
+    '5770k': 0x07,
+    '5500k': 0x08,
+    '5000k': 0x09,
+    '4000k': 0x0A,
+    '3400k': 0x0B,
+    '3350k': 0x0C,
+    '3000k': 0x0D,
+    '2800k': 0x0E,
+    '2600k': 0x0F,
+    '1850k': 0x10,
+    'user2': 0x12,
+    'user-2': 0x12,
+}
+
+COLOR_TEMPERATURE_NAMES = {
+    0x00: 'user1',
+    0x01: 'native',
+    0x02: '11000K',
+    0x03: '10000K',
+    0x04: '9300K',
+    0x05: '7500K',
+    0x06: '6500K',
+    0x07: '5770K',
+    0x08: '5500K',
+    0x09: '5000K',
+    0x0A: '4000K',
+    0x0B: '3400K',
+    0x0C: '3350K',
+    0x0D: '3000K',
+    0x0E: '2800K',
+    0x0F: '2600K',
+    0x10: '1850K',
+    0x12: 'user2',
+}
+
 POWER_SAVE_MODES = {
     'rgb-off-video-off': 0x00,
     'rgb-off-video-on': 0x01,
@@ -618,6 +668,97 @@ def build_serial_get_message(monitor_id):
     msg_size = 0x05
     checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET)
     return bytes([msg_size, monitor_id, GROUP_ID, CMD_SERIAL_GET, checksum])
+
+
+def build_video_parameters_set_message(
+    monitor_id,
+    brightness=0xFF,
+    color=0xFF,
+    contrast=0xFF,
+    sharpness=0xFF,
+    tint=0xFF,
+    black_level=0xFF,
+    gamma=0xFF,
+):
+    """
+    Build SICP message to set video parameters (0x32 command).
+    0xFF for any parameter means "no change".
+    """
+    msg_size = 0x0C
+    payload = [
+        brightness & 0xFF,
+        color & 0xFF,
+        contrast & 0xFF,
+        sharpness & 0xFF,
+        tint & 0xFF,
+        black_level & 0xFF,
+        gamma & 0xFF,
+    ]
+
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_VIDEO_PARAMETERS_SET,
+        *payload,
+    )
+
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_VIDEO_PARAMETERS_SET,
+        *payload,
+        checksum,
+    ])
+
+
+def build_video_parameters_get_message(monitor_id):
+    """Build SICP message to request video parameters (0x33 command)."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_VIDEO_PARAMETERS_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_VIDEO_PARAMETERS_GET, checksum])
+
+
+def build_color_temperature_set_message(monitor_id, mode_code):
+    """Build SICP message to set color temperature (0x34 command)."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_SET, mode_code)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_SET, mode_code, checksum])
+
+
+def build_color_temperature_get_message(monitor_id):
+    """Build SICP message to request color temperature (0x35 command)."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_GET, checksum])
+
+
+def build_color_temperature_fine_set_message(monitor_id, step_value):
+    """Build SICP message to set 100K-step color temperature (0x11 command)."""
+    msg_size = 0x06
+    checksum = calculate_checksum(
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_COLOR_TEMPERATURE_FINE_SET,
+        step_value,
+    )
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_COLOR_TEMPERATURE_FINE_SET,
+        step_value,
+        checksum,
+    ])
+
+
+def build_color_temperature_fine_get_message(monitor_id):
+    """Build SICP message to request 100K-step color temperature (0x12 command)."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_FINE_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_COLOR_TEMPERATURE_FINE_GET, checksum])
 
 
 def build_video_signal_get_message(monitor_id):
@@ -1326,6 +1467,120 @@ def set_picture_style(monitor_id, ip, style_code):
     return response and response.is_ack
 
 
+def set_brightness_level(monitor_id, ip, brightness_percent):
+    """Set user brightness (0-100%) via video parameters (SICP 8.10)."""
+    try:
+        brightness_value = int(brightness_percent)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Brightness value must be an integer") from exc
+
+    clamped_value = max(0, min(100, brightness_value))
+
+    message = build_video_parameters_set_message(monitor_id, brightness=clamped_value)
+    action = f"Set brightness to {clamped_value}%"
+    response = send_message(monitor_id, ip, message, action)
+    return response and response.is_ack
+
+
+def get_brightness_level(monitor_id, ip):
+    """Retrieve current brightness percentage via video parameters (SICP 8.10)."""
+    message = build_video_parameters_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get brightness", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_VIDEO_PARAMETERS_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            brightness = payload[0]
+            print(f"  Brightness: {brightness}%")
+            return brightness
+
+    return None
+
+
+def _coerce_kelvin_to_step_value(kelvin_value):
+    try:
+        kelvin_int = int(kelvin_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Color temperature must be an integer in Kelvin") from exc
+
+    step = int(round(kelvin_int / 100.0))
+    step = max(20, min(100, step))
+    resolved_kelvin = step * 100
+    return step, resolved_kelvin
+
+
+def set_color_temperature_mode(monitor_id, ip, mode_code):
+    """Set the color temperature preset (SICP 8.11)."""
+    if not (0 <= mode_code <= 0xFF):
+        raise ValueError("Color temperature code must be between 0 and 255")
+
+    message = build_color_temperature_set_message(monitor_id, mode_code)
+    label = COLOR_TEMPERATURE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set color temperature to {label}")
+    return response and response.is_ack
+
+
+def get_color_temperature_mode(monitor_id, ip):
+    """Retrieve the active color temperature preset (SICP 8.11)."""
+    message = build_color_temperature_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get color temperature", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_COLOR_TEMPERATURE_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            mode_code = payload[0]
+            label = COLOR_TEMPERATURE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+            print(f"  Color temperature: {label}")
+            return mode_code
+
+    return None
+
+
+def set_precise_color_temperature(monitor_id, ip, kelvin_value):
+    """Set User 2 color temperature in 100K steps (SICP 8.12)."""
+    step_value, resolved_kelvin = _coerce_kelvin_to_step_value(kelvin_value)
+
+    user2_code = COLOR_TEMPERATURE_MODES.get('user2', 0x12)
+    if user2_code is not None:
+        if not set_color_temperature_mode(monitor_id, ip, user2_code):
+            print("  Failed to set base color temperature to User 2; precise adjustment skipped")
+            return False
+
+    message = build_color_temperature_fine_set_message(monitor_id, step_value)
+    action = f"Set precise color temperature to {resolved_kelvin}K"
+    response = send_message(monitor_id, ip, message, action)
+    return response and response.is_ack
+
+
+def get_precise_color_temperature(monitor_id, ip):
+    """Read the current User 2 color temperature in 100K steps (SICP 8.12)."""
+    message = build_color_temperature_fine_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get precise color temperature", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_COLOR_TEMPERATURE_FINE_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            step_value = payload[0]
+            if not (20 <= step_value <= 100):
+                print(f"  Color temperature (precise): step {step_value}")
+                return step_value
+
+            kelvin = step_value * 100
+            print(f"  Color temperature (precise): {kelvin}K")
+            return kelvin
+
+    return None
+
+
 def get_test_pattern(monitor_id, ip):
     """Retrieve the current internal test pattern (SICP 8.24)."""
     message = build_test_pattern_get_message(monitor_id)
@@ -1921,6 +2176,12 @@ def print_usage():
     print("  get-video-signal          Check if active input has signal")
     print("  get-picture-style         Get current picture style")
     print("  set-picture-style <name>  Set picture style (highbright, srgb, ...)")
+    print("  get-brightness            Get brightness percentage (0-100)")
+    print("  set-brightness <0-100>    Set brightness via video parameters")
+    print("  get-color-temp            Get color temperature preset")
+    print("  set-color-temp <mode>     Set color temperature (native, 6500K, ...)")
+    print("  get-color-temp-precise    Get User 2 color temperature in 100K steps")
+    print("  set-color-temp-precise <kelvin|step>  Set User 2 color temp in 100K steps")
     print("  get-test-pattern          Get current internal test pattern")
     print("  set-test-pattern <name>   Set internal test pattern (off|white|red|...)")
     print("  get-remote-lock           Get remote control/keypad lock state")
@@ -2192,6 +2453,119 @@ def main():
 
         for (mon_ip, mon_id) in monitor_ids:
             if set_picture_style(mon_id, mon_ip, style_code):
+                success_count += 1
+
+    elif command == "get-brightness":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_brightness_level(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-brightness":
+        """
+        Note 2: This command is only supported on external sources(HDMI, DVI, …) and not on Android sources(Browser,
+        Mediaplayer, Custom App) on all models where video parameters are greyed out in the menu when an internal
+        source is active. This includes but is not restricted to the following models:
+        xxBDL3452T, xxBDL3651T, xxBDL3552T, xxBDL3652T, xxBDL3052E, xxBDL4052E/00 & /02, xxBDL3550Q,
+        xxBDL3650Q, xxBDL4550D
+        """
+        if len(sys.argv) < 4:
+            print("Error: set-brightness requires a value between 0 and 100")
+            sys.exit(1)
+
+        try:
+            requested_value = int(sys.argv[3], 0)
+        except ValueError:
+            print("Error: Brightness must be an integer between 0 and 100")
+            sys.exit(1)
+
+        clamped_value = max(0, min(100, requested_value))
+        if clamped_value != requested_value:
+            print(f"Warning: brightness {requested_value} out of range, clamped to {clamped_value}")
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_brightness_level(mon_id, mon_ip, clamped_value):
+                success_count += 1
+
+    elif command == "get-color-temp":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_color_temperature_mode(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-color-temp":
+        """
+        This command shares the same platform limitations as other video parameter adjustments (see SICP 8.1 notes).
+        It is typically only available on external sources when the video parameter menu is active.
+        """
+        if len(sys.argv) < 4:
+            print("Error: set-color-temp requires a mode name or numeric code")
+            print(f"Available modes: {', '.join(sorted({'native', 'user1', 'user2', '6500k', '5000k'}))}")
+            sys.exit(1)
+
+        mode_arg_raw = sys.argv[3]
+        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
+        mode_code = None
+
+        if normalized in COLOR_TEMPERATURE_MODES:
+            mode_code = COLOR_TEMPERATURE_MODES[normalized]
+        else:
+            try:
+                parsed = int(mode_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0xFF):
+                print("Error: Color temperature must match a known preset name or be a 0-255 code")
+                sys.exit(1)
+
+            mode_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            try:
+                if set_color_temperature_mode(mon_id, mon_ip, mode_code):
+                    success_count += 1
+            except ValueError as exc:
+                print(f"Error: {exc}")
+                sys.exit(1)
+
+    elif command == "get-color-temp-precise":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_precise_color_temperature(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-color-temp-precise":
+        """
+        Uses the 100K-step SICP command and automatically switches the preset to User 2 before applying.
+        """
+        if len(sys.argv) < 4:
+            print("Error: set-color-temp-precise requires a Kelvin value or step (20-100)")
+            sys.exit(1)
+
+        raw_arg = sys.argv[3].strip().lower()
+        if raw_arg.endswith('k'):
+            raw_arg = raw_arg[:-1]
+
+        try:
+            parsed_value = int(raw_arg, 0)
+        except ValueError:
+            print("Error: Color temperature must be an integer Kelvin value or step (20-100)")
+            sys.exit(1)
+
+        if 20 <= parsed_value <= 100:
+            desired_kelvin = parsed_value * 100
+        else:
+            desired_kelvin = parsed_value
+
+        try:
+            _, resolved_kelvin = _coerce_kelvin_to_step_value(desired_kelvin)
+        except ValueError as exc:
+            print(f"Error: {exc}")
+            sys.exit(1)
+
+        if resolved_kelvin != desired_kelvin:
+            print(f"Info: Requested {desired_kelvin}K adjusted to {resolved_kelvin}K (100K steps)")
+
+        for (mon_ip, mon_id) in monitor_ids:
+            if set_precise_color_temperature(mon_id, mon_ip, resolved_kelvin):
                 success_count += 1
 
     elif command == "get-test-pattern":
