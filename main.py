@@ -55,6 +55,8 @@ CMD_POWER_ON_LOGO_SET = 0x3E
 CMD_POWER_ON_LOGO_GET = 0x3F
 CMD_OSD_INFO_SET = 0x2C
 CMD_OSD_INFO_GET = 0x2D
+CMD_AUTO_SIGNAL_SET = 0xAE
+CMD_AUTO_SIGNAL_GET = 0xAF
 CMD_GROUP_ID_SET = 0x5C
 CMD_GROUP_ID_GET = 0x5D
 CMD_POWER_SAVE_SET = 0xD2
@@ -415,6 +417,26 @@ POWER_ON_LOGO_MODE_NAMES = {
     0x02: 'user',
 }
 
+AUTO_SIGNAL_MODES = {
+    'off': 0x00,
+    'all': 0x01,
+    'reserved': 0x02,
+    'pc-only': 0x03,
+    'pc-sources': 0x03,
+    'video-only': 0x04,
+    'video-sources': 0x04,
+    'failover': 0x05,
+}
+
+AUTO_SIGNAL_MODE_NAMES = {
+    0x00: 'off',
+    0x01: 'all',
+    0x02: 'reserved',
+    0x03: 'pc-only',
+    0x04: 'video-only',
+    0x05: 'failover',
+}
+
 POWER_SAVE_MODES = {
     'rgb-off-video-off': 0x00,
     'rgb-off-video-on': 0x01,
@@ -714,6 +736,27 @@ def build_osd_info_set_message(monitor_id, timeout_code):
         GROUP_ID,
         CMD_OSD_INFO_SET,
         timeout_code,
+        checksum,
+    ])
+
+
+def build_auto_signal_get_message(monitor_id):
+    """Build SICP message to query auto signal detection mode."""
+    msg_size = 0x05
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_GET)
+    return bytes([msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_GET, checksum])
+
+
+def build_auto_signal_set_message(monitor_id, mode_code):
+    """Build SICP message to set auto signal detection mode."""
+    msg_size = 0x06
+    checksum = calculate_checksum(msg_size, monitor_id, GROUP_ID, CMD_AUTO_SIGNAL_SET, mode_code)
+    return bytes([
+        msg_size,
+        monitor_id,
+        GROUP_ID,
+        CMD_AUTO_SIGNAL_SET,
+        mode_code,
         checksum,
     ])
 
@@ -1404,6 +1447,36 @@ def set_osd_info_timeout(monitor_id, ip, timeout_code):
     return response and response.is_ack
 
 
+def get_auto_signal_mode(monitor_id, ip):
+    """Retrieve the auto signal detection mode (SICP 5.4)."""
+    message = build_auto_signal_get_message(monitor_id)
+    response = send_message(monitor_id, ip, message, "Get auto signal detection", expect_data=True)
+
+    if response and response.is_data_response and response.data_payload:
+        payload = response.data_payload
+        if payload[0] == CMD_AUTO_SIGNAL_GET and len(payload) > 1:
+            payload = payload[1:]
+
+        if payload:
+            mode_code = payload[0]
+            mode_name = AUTO_SIGNAL_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+            print(f"  Auto signal detection: {mode_name}")
+            return mode_code
+
+    return None
+
+
+def set_auto_signal_mode(monitor_id, ip, mode_code):
+    """Set the auto signal detection mode."""
+    if not (0 <= mode_code <= 0x05):
+        raise ValueError("Auto signal mode must be between 0 and 5")
+
+    message = build_auto_signal_set_message(monitor_id, mode_code)
+    mode_name = AUTO_SIGNAL_MODE_NAMES.get(mode_code, f"0x{mode_code:02X}")
+    response = send_message(monitor_id, ip, message, f"Set auto signal detection to {mode_name}")
+    return response and response.is_ack
+
+
 def get_power_save_mode(monitor_id, ip):
     """Retrieve the current power save mode."""
     message = build_power_save_get_message(monitor_id)
@@ -1857,6 +1930,8 @@ def print_usage():
     print("  set-power-on-logo <mode>  Set power-on logo (off|on|user)")
     print("  get-osd-info              Get information OSD timeout")
     print("  set-osd-info <sec|off>    Set information OSD timeout (off|1-60)")
+    print("  get-auto-signal           Get auto signal detection mode")
+    print("  set-auto-signal <mode>    Set auto signal detection (off|all|pc-only|...)")
     print("  get-power-save            Get power save mode")
     print("  set-power-save <mode>     Set power save mode (rgb-off-video-off, ...)")
     print("  get-smart-power           Get smart power level")
@@ -2285,6 +2360,43 @@ def main():
         for (mon_ip, mon_id) in monitor_ids:
             try:
                 if set_osd_info_timeout(mon_id, mon_ip, timeout_code):
+                    success_count += 1
+            except ValueError as exc:
+                print(f"Error: {exc}")
+                sys.exit(1)
+
+    elif command == "get-auto-signal":
+        for (mon_ip, mon_id) in monitor_ids:
+            if get_auto_signal_mode(mon_id, mon_ip) is not None:
+                success_count += 1
+
+    elif command == "set-auto-signal":
+        if len(sys.argv) < 4:
+            print("Error: set-auto-signal requires a mode name or numeric code (0-5)")
+            print(f"Available modes: {', '.join(sorted(set(AUTO_SIGNAL_MODES.keys())))}")
+            sys.exit(1)
+
+        mode_arg_raw = sys.argv[3]
+        normalized = mode_arg_raw.lower().replace('_', '-').replace(' ', '-').strip()
+        mode_code = None
+
+        if normalized in AUTO_SIGNAL_MODES:
+            mode_code = AUTO_SIGNAL_MODES[normalized]
+        else:
+            try:
+                parsed = int(mode_arg_raw, 0)
+            except ValueError:
+                parsed = None
+
+            if parsed is None or not (0 <= parsed <= 0x05):
+                print("Error: Auto signal mode must be off|all|pc-only|video-only|failover or 0-5")
+                sys.exit(1)
+
+            mode_code = parsed
+
+        for (mon_ip, mon_id) in monitor_ids:
+            try:
+                if set_auto_signal_mode(mon_id, mon_ip, mode_code):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
