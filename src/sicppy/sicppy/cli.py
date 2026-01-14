@@ -203,12 +203,12 @@ def main():
     
     if command == "on": 
         for monitor in monitor_ids: 
-            if monitor.set_power(monitor.monitor_id, True):
+            if monitor.set_power(True):
                 success_count += 1
     
     elif command == "off": 
         for monitor in monitor_ids:
-            if monitor.set_power(monitor.monitor_id, False):
+            if monitor.set_power(False):
                 success_count += 1
 
     elif command == "set-power":
@@ -226,47 +226,47 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_power(monitor.monitor_id, desired_on):
+            if monitor.set_power(desired_on):
                 success_count += 1
     
     elif command == "backlight-on":
         for monitor in monitor_ids:
-            if monitor.set_backlight(monitor.monitor_id, True):
+            if monitor.set_backlight(True):
                 success_count += 1
     
     elif command == "backlight-off": 
         for monitor in monitor_ids:
-            if monitor.set_backlight(monitor.monitor_id, False):
+            if monitor.set_backlight(False):
                 success_count += 1
     
     elif command == "get-backlight":
         for monitor in monitor_ids: 
-            if monitor.get_backlight_state(monitor.monitor_id):
+            if monitor.get_backlight_state():
                 success_count += 1
     
     elif command == "4k-on": 
         for monitor in monitor_ids:
-            if monitor.set_android_4k_state(monitor.monitor_id, True):
+            if monitor.set_android_4k_state(True):
                 success_count += 1
     
     elif command == "4k-off":
         for monitor in monitor_ids:
-            if monitor.set_android_4k_state(monitor.monitor_id, False):
+            if monitor.set_android_4k_state(False):
                 success_count += 1
     
     elif command == "get-4k":
         for monitor in monitor_ids: 
-            if monitor.get_android_4k_state(monitor.monitor_id):
+            if monitor.get_android_4k_state():
                 success_count += 1
 
     elif command == "get-power":
         for monitor in monitor_ids:
-            if monitor.get_power_state(monitor.monitor_id) is not None:
+            if monitor.get_power_state() is not None:
                 success_count += 1
 
     elif command == "get-cold-start":
         for monitor in monitor_ids:
-            if monitor.get_cold_start_power_state(monitor.monitor_id) is not None:
+            if monitor.get_cold_start_power_state() is not None:
                 success_count += 1
 
     elif command == "set-cold-start":
@@ -286,12 +286,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_cold_start_power_state(monitor.monitor_id, cold_state):
+            if monitor.set_cold_start_power_state(cold_state):
                 success_count += 1
 
     elif command == "get-temperature":
         for monitor in monitor_ids:
-            if monitor.get_temperature(monitor.monitor_id) is not None:
+            if monitor.get_temperature() is not None:
                 success_count += 1
 
     elif command == "get-sicp-info":
@@ -317,7 +317,7 @@ def main():
         label_code = label_map[label_arg]
 
         for monitor in monitor_ids:
-            if monitor.get_sicp_info(monitor.monitor_id, label_code) is not None:
+            if monitor.get_sicp_info(label_code) is not None:
                 success_count += 1
 
     elif command == "get-model-info":
@@ -351,22 +351,22 @@ def main():
         label_code = model_map[label_arg]
 
         for monitor in monitor_ids:
-            if monitor.get_model_info(monitor.monitor_id, label_code) is not None:
+            if monitor.get_model_info(label_code) is not None:
                 success_count += 1
 
     elif command == "get-serial":
         for monitor in monitor_ids:
-            if monitor.get_serial_number(monitor.monitor_id) is not None:
+            if monitor.get_serial_number() is not None:
                 success_count += 1
 
     elif command == "get-video-signal":
         for monitor in monitor_ids:
-            if monitor.get_video_signal_status(monitor.monitor_id) is not None:
+            if monitor.get_video_signal_status() is not None:
                 success_count += 1
 
     elif command == "get-picture-style":
         for monitor in monitor_ids:
-            if monitor.get_picture_style(monitor.monitor_id) is not None:
+            if monitor.get_picture_style() is not None:
                 success_count += 1
 
     elif command == "set-picture-style":
@@ -385,12 +385,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_picture_style(monitor.monitor_id, style_code):
+            if monitor.set_picture_style(style_code):
                 success_count += 1
 
     elif command == "get-brightness":
         for monitor in monitor_ids:
-            if monitor.get_brightness_level(monitor.monitor_id) is not None:
+            if monitor.get_brightness_level() is not None:
                 success_count += 1
 
     elif command == "set-brightness":
@@ -416,12 +416,12 @@ def main():
             print(f"Warning: brightness {requested_value} out of range, clamped to {clamped_value}")
 
         for monitor in monitor_ids:
-            if monitor.set_brightness_level(monitor.monitor_id, clamped_value):
+            if monitor.set_brightness_level(clamped_value):
                 success_count += 1
 
     elif command == "get-color-temp":
         for monitor in monitor_ids:
-            if monitor.get_color_temperature_mode(monitor.monitor_id) is not None:
+            if monitor.get_color_temperature_mode() is not None:
                 success_count += 1
 
     elif command == "set-color-temp":
@@ -452,7 +452,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_color_temperature_mode(monitor.monitor_id, mode_code):
+                if monitor.set_color_temperature_mode(mode_code):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -460,7 +460,7 @@ def main():
 
     elif command == "get-color-temp-precise":
         for monitor in monitor_ids:
-            if monitor.get_precise_color_temperature(monitor.monitor_id) is not None:
+            if monitor.get_precise_color_temperature() is not None:
                 success_count += 1
 
     elif command == "set-color-temp-precise":
@@ -496,12 +496,12 @@ def main():
             print(f"Info: Requested {desired_kelvin}K adjusted to {resolved_kelvin}K (100K steps)")
 
         for monitor in monitor_ids:
-            if monitor.set_precise_color_temperature(monitor.monitor_id, resolved_kelvin):
+            if monitor.set_precise_color_temperature(resolved_kelvin):
                 success_count += 1
 
     elif command == "get-test-pattern":
         for monitor in monitor_ids:
-            if monitor.get_test_pattern(monitor.monitor_id) is not None:
+            if monitor.get_test_pattern() is not None:
                 success_count += 1
 
     elif command == "set-test-pattern":
@@ -527,12 +527,12 @@ def main():
             pattern_code = parsed
 
         for monitor in monitor_ids:
-            if monitor.set_test_pattern(monitor.monitor_id, pattern_code):
+            if monitor.set_test_pattern(pattern_code):
                 success_count += 1
 
     elif command == "get-remote-lock":
         for monitor in monitor_ids:
-            if monitor.get_remote_lock_state(monitor.monitor_id) is not None:
+            if monitor.get_remote_lock_state() is not None:
                 success_count += 1
 
     elif command == "set-remote-lock":
@@ -550,7 +550,7 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_remote_lock_state(monitor.monitor_id, mode_code):
+            if monitor.set_remote_lock_state(mode_code):
                 success_count += 1
 
     elif command == "remote-key":
@@ -572,12 +572,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.simulate_remote_key(monitor.monitor_id, key_code):
+            if monitor.simulate_remote_key(key_code):
                 success_count += 1
 
     elif command == "get-power-on-logo":
         for monitor in monitor_ids:
-            if monitor.get_power_on_logo_mode(monitor.monitor_id) is not None:
+            if monitor.get_power_on_logo_mode() is not None:
                 success_count += 1
 
     elif command == "set-power-on-logo":
@@ -595,12 +595,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_power_on_logo_mode(monitor.monitor_id, mode_code):
+            if monitor.set_power_on_logo_mode(mode_code):
                 success_count += 1
 
     elif command == "get-osd-info":
         for monitor in monitor_ids:
-            if monitor.get_osd_info_timeout(monitor.monitor_id) is not None:
+            if monitor.get_osd_info_timeout() is not None:
                 success_count += 1
 
     elif command == "set-osd-info":
@@ -624,7 +624,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_osd_info_timeout(monitor.monitor_id, timeout_code):
+                if monitor.set_osd_info_timeout(timeout_code):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -632,7 +632,7 @@ def main():
 
     elif command == "get-auto-signal":
         for monitor in monitor_ids:
-            if monitor.get_auto_signal_mode(monitor.monitor_id) is not None:
+            if monitor.get_auto_signal_mode() is not None:
                 success_count += 1
 
     elif command == "set-auto-signal":
@@ -656,7 +656,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_auto_signal_mode(monitor.monitor_id, mode_code):
+                if monitor.set_auto_signal_mode(mode_code):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -664,7 +664,7 @@ def main():
 
     elif command == "get-power-save":
         for monitor in monitor_ids:
-            if monitor.get_power_save_mode(monitor.monitor_id) is not None:
+            if monitor.get_power_save_mode() is not None:
                 success_count += 1
 
     elif command == "set-power-save":
@@ -686,12 +686,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_power_save_mode(monitor.monitor_id, mode_code):
+            if monitor.set_power_save_mode(mode_code):
                 success_count += 1
 
     elif command == "get-smart-power":
         for monitor in monitor_ids:
-            if monitor.get_smart_power_level(monitor.monitor_id) is not None:
+            if monitor.get_smart_power_level() is not None:
                 success_count += 1
 
     elif command == "set-smart-power":
@@ -713,12 +713,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_smart_power_level(monitor.monitor_id, level_code):
+            if monitor.set_smart_power_level(level_code):
                 success_count += 1
 
     elif command == "get-apm":
         for monitor in monitor_ids:
-            if monitor.get_apm_mode(monitor.monitor_id) is not None:
+            if monitor.get_apm_mode() is not None:
                 success_count += 1
 
     elif command == "set-apm":
@@ -740,12 +740,12 @@ def main():
             sys.exit(1)
 
         for monitor in monitor_ids:
-            if monitor.set_apm_mode(monitor.monitor_id, apm_code):
+            if monitor.set_apm_mode(apm_code):
                 success_count += 1
 
     elif command == "get-group-id":
         for monitor in monitor_ids:
-            if monitor.get_group_id(monitor.monitor_id) is not None:
+            if monitor.get_group_id() is not None:
                 success_count += 1
 
     elif command == "set-group-id":
@@ -769,7 +769,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_group_id(monitor.monitor_id, group_value):
+                if monitor.set_group_id(group_value):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -792,7 +792,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_monitor_id(monitor.monitor_id, new_monitor_id):
+                if monitor.set_monitor_id(new_monitor_id):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -800,7 +800,7 @@ def main():
 
     elif command == "get-volume":
         for monitor in monitor_ids:
-            if monitor.get_volume(monitor.monitor_id) is not None:
+            if monitor.get_volume() is not None:
                 success_count += 1
 
     elif command == "set-volume":
@@ -824,7 +824,7 @@ def main():
 
         for monitor in monitor_ids:
             try:
-                if monitor.set_volume(monitor.monitor_id, speaker_value, audio_value):
+                if monitor.set_volume(speaker_value, audio_value):
                     success_count += 1
             except ValueError as exc:
                 print(f"Error: {exc}")
@@ -832,32 +832,32 @@ def main():
 
     elif command == "get-mute":
         for monitor in monitor_ids:
-            if monitor.get_mute_status(monitor.monitor_id) is not None:
+            if monitor.get_mute_status() is not None:
                 success_count += 1
 
     elif command == "mute-on":
         for monitor in monitor_ids:
-            if monitor.set_mute(monitor.monitor_id, True):
+            if monitor.set_mute(True):
                 success_count += 1
 
     elif command == "mute-off":
         for monitor in monitor_ids:
-            if monitor.set_mute(monitor.monitor_id, False):
+            if monitor.set_mute(False):
                 success_count += 1
 
     elif command == "get-av-mute":
         for monitor in monitor_ids:
-            if monitor.get_av_mute_status(monitor.monitor_id) is not None:
+            if monitor.get_av_mute_status() is not None:
                 success_count += 1
 
     elif command == "av-mute-on":
         for monitor in monitor_ids:
-            if monitor.set_av_mute(monitor.monitor_id, True):
+            if monitor.set_av_mute(True):
                 success_count += 1
 
     elif command == "av-mute-off":
         for monitor in monitor_ids:
-            if monitor.set_av_mute(monitor.monitor_id, False):
+            if monitor.set_av_mute(False):
                 success_count += 1
 
     elif command == "get-ip":
@@ -873,22 +873,22 @@ def main():
             value_type = sys.argv[4].lower()
 
         for monitor in monitor_ids:
-            if monitor.get_ip_parameter(monitor.monitor_id, parameter_name, value_type):
+            if monitor.get_ip_parameter(parameter_name, value_type):
                 success_count += 1
 
     elif command == "wol-on":
         for monitor in monitor_ids:
-            if monitor.set_wol(monitor.monitor_id, True):
+            if monitor.set_wol(True):
                 success_count += 1
 
     elif command == "wol-off":
         for monitor in monitor_ids:
-            if monitor.set_wol(monitor.monitor_id, False):
+            if monitor.set_wol(False):
                 success_count += 1
 
     elif command == "get-wol":
         for monitor in monitor_ids:
-            if monitor.get_wake_on_lan(monitor.monitor_id):
+            if monitor.get_wake_on_lan():
                 success_count += 1
     
     elif command == "input":
@@ -912,12 +912,12 @@ def main():
                 sys. exit(1)
         
         for monitor in monitor_ids: 
-            if monitor.set_input_source(monitor.monitor_id, input_source_name, playlist):
+            if monitor.set_input_source(input_source_name, playlist):
                 success_count += 1
     
     elif command == "get-input": 
         for monitor in monitor_ids:
-            if monitor.get_input_source(monitor.monitor_id):
+            if monitor.get_input_source():
                 success_count += 1
     
     else:
