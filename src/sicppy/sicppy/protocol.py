@@ -214,7 +214,17 @@ class SICPProtocol:
 
 
     def set_brightness_level(self, brightness_percent:int):
-        """Set user brightness (0-100%) via video parameters (SICP 8.10)."""
+        """
+        Set user brightness (0-100%) via video parameters.
+
+        Note 1: This command is not supported on below models:
+            10BDLxxxxT, 24BDL4151T
+        Note 2: This command is only supported on external sources(HDMI, DVI, …) and not on Android sources(Browser,
+            Mediaplayer, Custom App) on all models where video parameters are greyed out in the menu when an internal
+            source is active. This includes but is not restricted to the following models:
+            xxBDL3452T, xxBDL3651T, xxBDL3552T, xxBDL3652T, xxBDL3052E, xxBDL4052E/00 & /02, xxBDL3550Q,
+            xxBDL3650Q, xxBDL4550D
+        """
         try:
             brightness_value = int(brightness_percent)
         except (TypeError, ValueError) as exc:
@@ -230,7 +240,11 @@ class SICPProtocol:
 
 
     def get_brightness_level(self) -> int:
-        """Retrieve current brightness percentage via video parameters (SICP 8.10)."""
+        """
+        Retrieve current brightness percentage via video parameters.
+
+        Same limitations as set_brightness_level() apply.
+        """
         message = construct_message(self.monitor_id, SICPCommand.VIDEO_PARAMETERS_GET)
         logger.debug(f"Sending get brightness to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -239,7 +253,11 @@ class SICPProtocol:
         return response.data_payload[0]
 
     def set_color_temperature_mode(self, mode_code: ColorTemperatureMode):
-        """Set the color temperature preset (SICP 8.11)."""
+        """
+        Set the color temperature preset.
+
+        Same limitations as set_brightness_level() Note 1 and Note 2 apply.
+        """
         message = construct_message(self.monitor_id, SICPCommand.COLOR_TEMPERATURE_SET, mode_code.value)
         logger.debug(f"Sending set color temperature to {mode_code} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
@@ -247,7 +265,11 @@ class SICPProtocol:
 
 
     def get_color_temperature_mode(self) -> ColorTemperatureMode:
-        """Retrieve the active color temperature preset (SICP 8.11)."""
+        """
+        Retrieve the active color temperature preset.
+
+        Same limitations as set_brightness_level() Note 1 and Note 2 apply.
+        """
         message = construct_message(self.monitor_id, SICPCommand.COLOR_TEMPERATURE_GET)
         logger.debug(f"Sending get color temperature to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -261,7 +283,12 @@ class SICPProtocol:
 
 
     def set_precise_color_temperature(self, kelvin_value):
-        """Set User 2 color temperature in 100K steps (SICP 8.12)."""
+        """
+        Set User 2 color temperature in 100K steps.
+
+        Same limitations as set_brightness_level() Note 1 and Note 2 apply.
+        This sets the color temperature mode to User 2 automatically to be able to adjust precise color temperature.
+        """
         step_value, resolved_kelvin = _coerce_kelvin_to_step_value(kelvin_value)
 
         if not self.set_color_temperature_mode(ColorTemperatureMode.USER2):
@@ -276,7 +303,9 @@ class SICPProtocol:
 
 
     def get_precise_color_temperature(self) -> int:
-        """Read the current User 2 color temperature in 100K steps (SICP 8.12)."""
+        """
+        Same limitations as set_precise_color_temperature().
+        """
         message = construct_message(self.monitor_id, SICPCommand.COLOR_TEMPERATURE_FINE_GET)
         logger.debug(f"Sending get precise color temperature to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -291,7 +320,9 @@ class SICPProtocol:
 
 
     def get_test_pattern(self) -> TestPattern:
-        """Retrieve the current internal test pattern (SICP 8.24)."""
+        """
+        Retrieve the current internal test pattern (SICP 2.06 onwards).
+        """
         message = construct_message(self.monitor_id, SICPCommand.TEST_PATTERN_GET)
         logger.debug(f"Sending get test pattern to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -305,7 +336,12 @@ class SICPProtocol:
 
 
     def set_test_pattern(self, pattern_code: TestPattern):
-        """Enable an internal test pattern (unsupported on some BDL models)."""
+        """
+        Enable an internal test pattern (unsupported on some BDL models).
+
+        This command is not supported on the xxBDL4550D / xxBDL3550Q / xxBDL3452T / xxBDL3651T.
+        Supported from SICP version 2.06 onwards.
+        """
         message = construct_message(self.monitor_id, SICPCommand.TEST_PATTERN_SET, pattern_code.value)
         logger.debug(f"Sending set test pattern to {pattern_code} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
@@ -335,7 +371,7 @@ class SICPProtocol:
 
 
     def simulate_remote_key(self, key_code: RemoteKey):
-        """Simulate a button press on the remote control (SICP 7.2)."""
+        """Simulate a button press on the remote control (SICP 2.10 onwards)."""
         reserved = 0x00
         message = construct_message(self.monitor_id, SICPCommand.REMOTE_CONTROL_SIM, key_code.value, reserved)
         logger.debug(f"Sending simulate remote key {key_code} to Monitor ID {self.monitor_id}")
@@ -358,7 +394,7 @@ class SICPProtocol:
 
 
     def set_power_on_logo_mode(self, mode: PowerOnLogoMode):
-        """Set the power-on logo mode (SICP 11.1)."""
+        """Set the power-on logo mode. User mode must be set in the admin options (Home + 1888) and uploading an android bootanimation file."""
         message = construct_message(self.monitor_id, SICPCommand.POWER_ON_LOGO_SET, mode.value)
         logger.debug(f"Sending set power-on logo to {mode} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
@@ -388,7 +424,7 @@ class SICPProtocol:
 
 
     def get_auto_signal_mode(self) -> AutoSignalMode:
-        """Retrieve the auto signal detection mode (SICP 5.4)."""
+        """Retrieve the auto signal detection mode (SICP 2.05 onwards)."""
         message = construct_message(self.monitor_id, SICPCommand.AUTO_SIGNAL_GET)
         logger.debug(f"Sending get auto signal detection to Monitor ID {self.monitor_id}")
         response = self.send_message(message, expect_data=True)
@@ -543,7 +579,7 @@ class SICPProtocol:
         """
         Control Android 4K mode.
         
-        Available from SICP 2.11+ with displays that support this feature.
+        Available from SICP 2.11 onwards.
         """
         message = construct_message(self.monitor_id, SICPCommand.ANDROID_4K_SET, 0x01 if enable_4k else 0x00)
         action = "Android 4K ENABLED" if enable_4k else "Android 4K DISABLED"
