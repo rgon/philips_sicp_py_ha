@@ -38,17 +38,23 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                info = await self._async_validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidResponse:
-                errors["base"] = "invalid_auth"
-            except Exception:  # noqa: BLE001
-                errors["base"] = "unknown"
-            else:
-                await self.async_set_unique_id(info["unique_id"])
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=info["data"])
+                cv.matches_regex(MAC_REGEX)(user_input[CONF_MAC_ADDRESS])
+            except vol.Invalid:
+                errors[CONF_MAC_ADDRESS] = "invalid_mac"
+
+            if not errors:
+                try:
+                    info = await self._async_validate_input(self.hass, user_input)
+                except CannotConnect:
+                    errors["base"] = "cannot_connect"
+                except InvalidResponse:
+                    errors["base"] = "invalid_auth"
+                except Exception:  # noqa: BLE001
+                    errors["base"] = "unknown"
+                else:
+                    await self.async_set_unique_id(info["unique_id"])
+                    self._abort_if_unique_id_configured()
+                    return self.async_create_entry(title=info["title"], data=info["data"])
 
         return self.async_show_form(
             step_id="user",
@@ -58,7 +64,7 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=255)
                     ),
-                    vol.Required(CONF_MAC_ADDRESS): cv.matches_regex(MAC_REGEX),
+                    vol.Required(CONF_MAC_ADDRESS): cv.string,
                 }
             ),
             errors=errors
