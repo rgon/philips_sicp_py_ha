@@ -69,8 +69,6 @@ class SICPIPMonitor(SICPProtocol):
                 raise NotSupportedOrNotAvailableError("Command not supported or not available (NAV response)")
             if response.is_nack:
                 raise ChecksumOrFormatError("Checksum or format error (NACK response)")
-            if not response.is_data_response:
-                raise RuntimeError("Expected data response but received an unexpected message")
             if not response.valid:
                 raise RuntimeError("Invalid response received from monitor")
 
