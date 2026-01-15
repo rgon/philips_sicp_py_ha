@@ -78,6 +78,8 @@ class SicpDisplayClient:
         brightness: int | None = None
         try:
             brightness = self._monitor.get_brightness_level()
+        except NotSupportedOrNotAvailableError:
+            _LOGGER.debug("Brightness level unsupported on this source or power saving mode")
         except Exception:  # noqa: BLE001 - optional metric, ignore
             _LOGGER.debug("Brightness level unavailable", exc_info=True)
 
@@ -202,10 +204,16 @@ class SicpDisplayClient:
         }
 
     def _collect_sicp_info(self) -> dict[str, str]:
+        custom_intent_version: str | None = None
+        try:
+            custom_intent_version = self._monitor.get_sicp_info(SicpInfoFields.CUSTOM_INTENT_VERSION)
+        except NotSupportedOrNotAvailableError:
+            custom_intent_version = "N/A"
+
         return {
             "platform_label": self._monitor.get_sicp_info(SicpInfoFields.PLATFORM_LABEL),
             "platform_version": self._monitor.get_sicp_info(SicpInfoFields.PLATFORM_VERSION),
-            "custom_intent_version": self._monitor.get_sicp_info(SicpInfoFields.CUSTOM_INTENT_VERSION),
+            "custom_intent_version": custom_intent_version,
         }
 
 
