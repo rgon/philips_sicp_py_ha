@@ -243,3 +243,19 @@ class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
     def client(self) -> SicpDisplayClient:
         """Expose the underlying client to entities for control operations."""
         return self._client
+
+    @property
+    def serial_number(self) -> str | None:
+        """Return the most recent serial number."""
+        if self.data and self.data.serial_number:
+            return self.data.serial_number
+        if not self.config_entry:
+            return None
+        return self.config_entry.data.get("serial_number")
+
+    @property
+    def model_number(self) -> str | None:
+        """Return the reported model number if available."""
+        if self.data and self.data.model_info:
+            return self.data.model_info.get("model_number")
+        return None

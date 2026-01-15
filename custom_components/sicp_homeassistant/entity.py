@@ -7,7 +7,6 @@ from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, Device
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from sicppy.ip_monitor import NotSupportedOrNotAvailableError
-from functools import cached_property
 
 from .const import CONF_MAC_ADDRESS, DOMAIN, MANUFACTURER
 from .coordinator import PhilipsSicpCoordinator, SicpDisplayData
@@ -26,36 +25,31 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
         friendly_suffix = suffix.replace("_", " ").strip()
         self._attr_name = friendly_suffix.title() if friendly_suffix else suffix
 
-    @cached_property
-    def device_info(self) -> DeviceInfo:
-        """Return metadata for the parent display."""
-        data = self.coordinator.data
-        mac = self._entry.data.get(CONF_MAC_ADDRESS)
-        connections: set[tuple[str, str]] | None = None
-        if mac:
-            connections = {(CONNECTION_NETWORK_MAC, mac)}
+        mac = entry.data.get(CONF_MAC_ADDRESS)
+        connections = {(CONNECTION_NETWORK_MAC, mac)} if mac else None
 
-        serial = self._entry.data.get("serial_number")
-        model = data.model_info.get("model_number") if data else None
+        data = coordinator.data
+        model = data.model_info.get("model_number") if data and data.model_info else None
+        serial = data.serial_number if data else None
 
-        identifiers = {(DOMAIN, self._entry.entry_id)}
-        if self._entry.unique_id:
-            identifiers.add((DOMAIN, self._entry.unique_id))
+        identifiers = {(DOMAIN, entry.entry_id)}
+        if entry.unique_id:
+            identifiers.add((DOMAIN, entry.unique_id))
 
         if not connections:
             raise HomeAssistantError("Cannot determine device connections for SICP display.")
 
-        return DeviceInfo(
+        self._attr_device_info = DeviceInfo(
             identifiers=identifiers,
             connections=connections,
             manufacturer=MANUFACTURER,
             model=model,
-            name=self._entry.title,
+            name=entry.title,
             serial_number=serial,
         )
 
     @property
-    def sicp_data(self) -> SicpDisplayData:
+    def sicp_data(self) -> SicpDisplayData | None:
         """Shortcut to the latest coordinator data."""
         return self.coordinator.data
 

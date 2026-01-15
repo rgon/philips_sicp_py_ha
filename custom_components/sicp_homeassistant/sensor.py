@@ -28,8 +28,8 @@ async def async_setup_entry(
 
     entities: list[PhilipsSicpSensorEntity] = [
         PhilipsSicpTemperatureSensor(coordinator, entry),
-        PhilipsSicpModelInfoSensor(coordinator, entry),
-        PhilipsSicpSerialNumberSensor(coordinator, entry),
+        PhilipsFirmwareVersionSensor(coordinator, entry),
+        # PhilipsSicpSerialNumberSensor(coordinator, entry),
         PhilipsSicpSicpInfoSensor(coordinator, entry),
         PhilipsSicpPowerStateSensor(coordinator, entry),
     ]
@@ -37,7 +37,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class PhilipsSicpSensorEntity(PhilipsSicpEntity): #, SensorEntity):
+class PhilipsSicpSensorEntity(PhilipsSicpEntity, SensorEntity):
     """Shared base class for sensors."""
 
 
@@ -62,12 +62,12 @@ class PhilipsSicpTemperatureSensor(PhilipsSicpSensorEntity):
     def native_value(self) -> int | None:
         data = self.sicp_data
         temps = data.temperatures if data else None
-        if not temps:
+        if not temps or len(temps) == 0:
             return None
         return temps[0]
 
 
-class PhilipsSicpModelInfoSensor(PhilipsSicpSensorEntity):
+class PhilipsFirmwareVersionSensor(PhilipsSicpSensorEntity):
     """Sensor exposing model information."""
 
     _attr_icon = "mdi:label"
@@ -87,29 +87,7 @@ class PhilipsSicpModelInfoSensor(PhilipsSicpSensorEntity):
         data = self.sicp_data.model_info if self.sicp_data else None
         if not data:
             return None
-        return data.get("model_number")
-
-
-class PhilipsSicpSerialNumberSensor(PhilipsSicpSensorEntity):
-    """Sensor exposing the serial number."""
-
-    _attr_icon = "mdi:identifier"
-
-    def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
-        super().__init__(coordinator, entry, "serial")
-
-    @cached_property
-    def native_value(self) -> str | None:
-        if not self.sicp_data:
-            return None
-        return self.sicp_data.serial_number
-
-    @cached_property
-    def extra_state_attributes(self) -> Mapping[str, str] | None:
-        return {
-            ATTR_ATTRIBUTION: "Data retrieved via Philips SICP",
-        }
-
+        return data.get("firmware_version")
 
 class PhilipsSicpSicpInfoSensor(PhilipsSicpSensorEntity):
     """Sensor exposing the SICP firmware information."""
@@ -131,7 +109,7 @@ class PhilipsSicpSicpInfoSensor(PhilipsSicpSensorEntity):
         data = self.sicp_data.sicp_info if self.sicp_data else None
         if not data:
             return None
-        return data.get("platform_label")
+        return data.get("platform_version")
 
 
 class PhilipsSicpPowerStateSensor(PhilipsSicpSensorEntity):

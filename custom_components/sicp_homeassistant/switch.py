@@ -70,13 +70,13 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity): #, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
 
-class PhilipsSicpMuteSwitch(PhilipsSicpEntity): #, SwitchEntity):
+class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
     """Switch entity that toggles the audio mute state."""
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "mute")
 
-    @property
+    @cached_property
     def is_on(self) -> bool | None:
         data = self.sicp_data
         if data is None:

@@ -10,8 +10,7 @@ from homeassistant.components.light.const import ColorMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import color as color_util
-# from propcache import cached_property
+
 from functools import cached_property
 
 from .const import DATA_COORDINATOR, DOMAIN
@@ -31,12 +30,12 @@ async def async_setup_entry(
     async_add_entities([PhilipsSicpLight(coordinator, entry)])
 
 
-class PhilipsSicpLight(PhilipsSicpEntity): #, LightEntity):
+class PhilipsSicpLight(PhilipsSicpEntity, LightEntity):
     """Representation of the display power/brightness controls."""
 
-    _light_internal_supported_color_modes = {ColorMode.BRIGHTNESS, ColorMode.COLOR_TEMP}
-    # _attr_min_mireds = color_util.color_temperature_kelvin_to_mired(10000)
-    # _attr_max_mireds = color_util.color_temperature_kelvin_to_mired(2000)
+    _attr_supported_color_modes = {ColorMode.COLOR_TEMP}
+    _attr_min_color_temp_kelvin = 2000
+    _attr_max_color_temp_kelvin = 10000
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "backlight")
@@ -57,17 +56,18 @@ class PhilipsSicpLight(PhilipsSicpEntity): #, LightEntity):
 
     @cached_property
     def color_mode(self) -> ColorMode:
-        data = self.sicp_data
-        if data and data.precise_color_temperature:
-            return ColorMode.COLOR_TEMP
-        return ColorMode.BRIGHTNESS
+        return ColorMode.COLOR_TEMP
+        # data = self.sicp_data
+        # if data and data.precise_color_temperature:
+        #     return ColorMode.COLOR_TEMP
+        # return ColorMode.BRIGHTNESS
 
     @property
     def color_temp_kelvin(self) -> int | None:
         data = self.sicp_data
         if not data or not data.precise_color_temperature:
             return None
-        return color_util.color_temperature_kelvin_to_mired(data.precise_color_temperature)
+        return data.precise_color_temperature
 
     async def async_turn_on(self, **kwargs) -> None:
         client = self.coordinator.client
@@ -87,7 +87,7 @@ class PhilipsSicpLight(PhilipsSicpEntity): #, LightEntity):
             )
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
-            kelvin = int(color_util.color_temperature_mired_to_kelvin(kwargs[ATTR_COLOR_TEMP_KELVIN]))
+            kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
             await self._async_call_client(
                 client.set_precise_color_temperature,
                 kelvin,
