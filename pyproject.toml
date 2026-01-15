@@ -21,3 +21,11 @@ sicppy = { workspace = true }
 dev = [
     "ruff>=0.14.11",
 ]
+
+[tool.setuptools]
+packages = ["sicppy", "sicp_homeassistant"]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+sicppy = "lib/sicppy/sicppy"
+sicp_homeassistant = "custom_components/sicp_homeassistant"

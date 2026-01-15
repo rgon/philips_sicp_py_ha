@@ -1,14 +1,43 @@
 [project]
 name = "sicp-homeassistant"
-version = "0.1.0"
+version = "0.2.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "homeassistant>=2026.1.1",
+    # no longer included, as vendorized below
     "sicppy",
-    "voluptuous>=0.15.2",
 ]
 
 [tool.uv.sources]
 sicppy = { workspace = true }
+
+[tool.uv.dependencies.dev]
+dev = [
+    "homeassistant>=2026.1.1",
+    "voluptuous>=0.15.2",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# build sicp_homeassistant and vendorized sicppy
+packages = ["sicp_homeassistant", "sicppy"]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+sicp_homeassistant = "."
+# Vendorize sicppy and include it in the distribution
+sicppy = "../../lib/sicppy"
+
+[tool.setuptools.package-data]
+sicp_homeassistant = [
+  "manifest.json",
+  "strings.json",
+  "translations/**/*.json",
+]

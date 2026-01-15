@@ -16,7 +16,7 @@ Philips panels only accept SICP commands from IPs present in their ARP table. En
 
 ### Setup
 
-1. Copy the `sicp_homeassistant` folder into `custom_components/philips_sicp_display` in your Home Assistant instance.
+1. Copy the `sicp_homeassistant` folder into `custom_components/sicp_homeassistant` in your Home Assistant instance.
 2. Install the accompanying `sicppy` package (packaged in this repo) into the same Python environment if you are not using a workspace-aware installer.
 3. Restart Home Assistant.
 4. Use *Settings → Devices & Services → Add Integration* and search for **Philips SICP Display**.

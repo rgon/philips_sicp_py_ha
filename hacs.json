@@ -2,5 +2,7 @@
     "name": "Philips Signage SICP Display",
     "homeassistant": "2025.1.1b0",
     "hacs": "2.0.5",
-    "hide_default_branch": true
+    "hide_default_branch": true,
+    "zip_release": true,
+    "filename": "sicp_homeassistant.zip"
 }
