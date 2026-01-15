@@ -34,7 +34,7 @@ async def async_setup_entry(
 class PhilipsSicpLight(PhilipsSicpEntity): #, LightEntity):
     """Representation of the display power/brightness controls."""
 
-    _attr_supported_color_modes = {ColorMode.BRIGHTNESS, ColorMode.COLOR_TEMP}
+    _light_internal_supported_color_modes = {ColorMode.BRIGHTNESS, ColorMode.COLOR_TEMP}
     # _attr_min_mireds = color_util.color_temperature_kelvin_to_mired(10000)
     # _attr_max_mireds = color_util.color_temperature_kelvin_to_mired(2000)
 
