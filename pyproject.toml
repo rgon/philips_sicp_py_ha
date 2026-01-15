@@ -10,9 +10,14 @@ dependencies = [
 
 [tool.uv.workspace]
 members = [
-    "src/sicppy",
-    "src/sicp_homeassistant",
+    "lib/sicppy",
+    "custom_components/sicp_homeassistant",
 ]
 
 [tool.uv.sources]
 sicppy = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.11",
+]
