@@ -3,17 +3,21 @@
     "step": {
       "user": {
         "title": "Add Philips SICP Display",
-        "description": "Make sure the display shares the same subnet with Home Assistant or configure a static ARP entry before proceeding.",
+        "description": "Provide the connection details for the display. NOTE: The display must be turned on and connected to a network accessible by Home Assistant.",
         "data": {
           "host": "IP address",
           "monitor_id": "Monitor ID",
-          "mac": "MAC address"
+          "mac": "MAC address (for Wake-on-LAN)"
+        },
+        "data_description": {
+          "mac": "Ensure the display shares the same subnet with Home Assistant. If not the case, allow access between those subnets and configure a static ARP entry on your router with a command similar to `arp -i brXX -s 192.168.XX.YYY 18:65:71:ZZ:ZZ:ZZ` before proceeding, so that broadcast messages reach the display. This will let the WoL packets wake up the display when it's turned off."
         }
       }
     },
     "error": {
       "cannot_connect": "Unable to connect to the display. Confirm the IP, monitor ID, and network reachability.",
-      "invalid_auth": "The display responded with an unexpected payload.",
+      "setup_error": "Error during display setup or connection check: {error_detail}",
+      "invalid_monitor_id": "Monitor ID must be a number between 1 and 255.",
       "unknown": "Unexpected error"
     }
   }

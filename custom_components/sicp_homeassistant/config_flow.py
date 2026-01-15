@@ -8,6 +8,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.exceptions import HomeAssistantError
 
@@ -35,8 +36,17 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] | None = None
 
         if user_input is not None:
+            user_input = user_input.copy()
+            monitor_id = user_input.get(CONF_MONITOR_ID, DEFAULT_MONITOR_ID)
+            try:
+                # coerce int
+                user_input[CONF_MONITOR_ID] = int(monitor_id)
+            except (TypeError, ValueError):
+                errors[CONF_MONITOR_ID] = "invalid_monitor_id"
+
             try:
                 cv.matches_regex(MAC_REGEX)(user_input[CONF_MAC_ADDRESS])
             except vol.Invalid:
@@ -47,8 +57,10 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     info = await self._async_validate_input(self.hass, user_input)
                 except CannotConnect:
                     errors["base"] = "cannot_connect"
-                except InvalidResponse:
-                    errors["base"] = "invalid_auth"
+                except InvalidResponse as err:
+                    errors["base"] = "setup_error"
+                    detail = str(err) or "See logs for details"
+                    description_placeholders = {"error_detail": detail}
                 except Exception:  # noqa: BLE001
                     errors["base"] = "unknown"
                 else:
@@ -56,18 +68,26 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(title=info["title"], data=info["data"])
 
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST): cv.string,
+                vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=255,
+                        step=1,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(CONF_MAC_ADDRESS): cv.string,
+            }
+        )
+
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_HOST): cv.string,
-                    vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): vol.All(
-                        vol.Coerce(int), vol.Range(min=1, max=255)
-                    ),
-                    vol.Required(CONF_MAC_ADDRESS): cv.string,
-                }
-            ),
-            errors=errors
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or {}),
+            errors=errors,
+            description_placeholders=description_placeholders,
         )
 
     async def _async_validate_input(
@@ -87,7 +107,8 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except NetworkError as exc:
             raise CannotConnect from exc
         except Exception as exc:  # noqa: BLE001
-            raise InvalidResponse from exc
+            print("Exception during fetch_status:", exc)
+            raise InvalidResponse(str(exc)) from exc
 
         serial = data.serial_number or normalized_mac
         title = data.model_info.get("model_number") if data.model_info else None
