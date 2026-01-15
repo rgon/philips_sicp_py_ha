@@ -107,7 +107,6 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except NetworkError as exc:
             raise CannotConnect from exc
         except Exception as exc:  # noqa: BLE001
-            print("Exception during fetch_status:", exc)
             raise InvalidResponse(str(exc)) from exc
 
         serial = data.serial_number or normalized_mac
