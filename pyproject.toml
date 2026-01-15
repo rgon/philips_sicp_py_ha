@@ -29,3 +29,9 @@ include-package-data = true
 [tool.setuptools.package-dir]
 sicppy = "lib/sicppy/sicppy"
 sicp_homeassistant = "custom_components/sicp_homeassistant"
+
+[tool.pyright]
+extraPaths = [
+    "lib/sicppy",
+    "custom_components",
+]

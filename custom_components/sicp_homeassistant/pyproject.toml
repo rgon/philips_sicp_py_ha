@@ -11,7 +11,7 @@ dependencies = [
 [tool.uv.sources]
 sicppy = { workspace = true }
 
-[tool.uv.dependencies.dev]
+[dependency-groups]
 dev = [
     "homeassistant>=2026.1.1",
     "voluptuous>=0.15.2",
@@ -33,7 +33,7 @@ sicp_homeassistant = "."
 
 [tool.setuptools.package-data]
 sicp_homeassistant = [
-  "manifest.json",
-  "strings.json",
-  "translations/**/*.json",
+    "manifest.json",
+    "strings.json",
+    "translations/**/*.json",
 ]
