@@ -1,17 +1,13 @@
 [project]
-name = "philipssignageha"
+name = "sicp-homeassistant"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "homeassistant>=2026.1.1",
     "sicppy",
-]
-
-[tool.uv.workspace]
-members = [
-    "src/sicppy",
-    "src/sicp_homeassistant",
+    "voluptuous>=0.15.2",
 ]
 
 [tool.uv.sources]

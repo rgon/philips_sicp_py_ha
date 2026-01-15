@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Philips SICP Display",
+        "description": "Make sure the display shares the same subnet with Home Assistant or configure a static ARP entry before proceeding.",
+        "data": {
+          "host": "IP address",
+          "monitor_id": "Monitor ID",
+          "mac": "MAC address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the display. Confirm the IP, monitor ID, and network reachability.",
+      "invalid_auth": "The display responded with an unexpected payload.",
+      "unknown": "Unexpected error"
+    }
+  }
+}
