@@ -519,7 +519,7 @@ class SICPProtocol:
 
     def set_backlight(self, backlight_on: bool):
         """Control display backlight state."""
-        message = construct_message(self.monitor_id, SICPCommand.BACKLIGHT_SET, 0x01 if backlight_on else 0x00)
+        message = construct_message(self.monitor_id, SICPCommand.BACKLIGHT_SET, 0x00 if backlight_on else 0x01)
         action = "Backlight ON" if backlight_on else "Backlight OFF"
         logger.debug(f"Sending backlight control message: {action} to Monitor ID {self.monitor_id}")
         response = self.send_message(message)
