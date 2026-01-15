@@ -5,26 +5,29 @@ def snake_case_to_human_readable(name:str) -> str:
     """Convert snake_case string to human readable format."""
     return name.replace("_", " ").title()
 
-def get_type_options(type_:Any):
+def get_type_options(type_:Any) -> tuple[str, str|None]:
     """Get possible options for a given type."""
     if type_ is bool:
-        return "true|false"
+        return "true|false", None
     elif type_ is int:
-        return "<0-100>"
-    elif isinstance(type_, Enum):
-        return "|".join([e.name.lower() for e in type_.__dict__.values() if isinstance(e, Enum)])
+        return "<0-100>", None
+    elif isinstance(type_, Enum) or isinstance(type_, type) and issubclass(type_, Enum):
+        enum_name = type_.__name__
+        return f"<{enum_name}>", f"{enum_name}: <{'|'.join([e.name.lower() for e in type_.__dict__.values() if isinstance(e, Enum)])}>"
     else:
-        return "<value>"
+        return "<value>", None
 
 def print_class_methods_as_commands(cls, ignore_methods:set[str] = set()):
     for attr in dir(cls):
         if not attr.startswith("_") and callable(getattr(cls, attr)) and attr not in ignore_methods:
             print(f"  {attr}", end="")
+
+            enum_arg_descriptions = []
             # print args
             method = getattr(cls, attr)
             if method.__code__.co_argcount > 1:
                 args = method.__code__.co_varnames[1:method.__code__.co_argcount]
-                # If arg is optional, denote with []
+
                 arg_list = []
                 for arg in args:
                     is_optional = False
@@ -32,8 +35,12 @@ def print_class_methods_as_commands(cls, ignore_methods:set[str] = set()):
                         default_args = method.__code__.co_varnames[method.__code__.co_argcount - len(method.__defaults__):method.__code__.co_argcount]
                         if arg in default_args:
                             is_optional = True
+
                     type_hint = method.__annotations__.get(arg, Any)
-                    type_options = get_type_options(type_hint)
+                    type_options, these_enum_descriptions = get_type_options(type_hint)
+                    enum_arg_descriptions.append(these_enum_descriptions)
+
+                    # If arg is optional, denote with []
                     if is_optional:
                         arg_list.append(f"[{arg}:{type_options}]")
                     else:
@@ -49,6 +56,12 @@ def print_class_methods_as_commands(cls, ignore_methods:set[str] = set()):
                 print(f"     {first_line}")
             else:
                 print()
+
+            # Print enum descriptions if any
+            for enum_desc in enum_arg_descriptions:
+                if enum_desc:
+                    print(f"     {enum_desc}")
+                
 
 class CommandError(Exception):
     """Base class for command errors."""
