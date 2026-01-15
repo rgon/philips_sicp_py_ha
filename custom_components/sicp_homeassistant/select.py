@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from sicppy.sicppy.messages import (
+from sicppy.messages import (
     ColdStartPowerState,
     InputSource,
     PowerOnLogoMode,

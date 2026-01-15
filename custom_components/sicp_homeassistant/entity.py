@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from sicppy.sicppy.ip_monitor import NotSupportedOrNotAvailableError
+from sicppy.ip_monitor import NotSupportedOrNotAvailableError
 from functools import cached_property
 
 from .const import CONF_MAC_ADDRESS, DOMAIN, MANUFACTURER

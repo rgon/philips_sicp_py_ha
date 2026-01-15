@@ -10,7 +10,7 @@ from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from sicppy.sicppy.messages import PowerState
+from sicppy.messages import PowerState
 
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import PhilipsSicpCoordinator

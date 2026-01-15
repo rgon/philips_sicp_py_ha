@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    # no longer included, as vendorized below
     "sicppy",
 ]
 
@@ -26,14 +25,11 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-# build sicp_homeassistant and vendorized sicppy
-packages = ["sicp_homeassistant", "sicppy"]
+packages = ["sicp_homeassistant"]
 include-package-data = true
 
 [tool.setuptools.package-dir]
 sicp_homeassistant = "."
-# Vendorize sicppy and include it in the distribution
-sicppy = "../../lib/sicppy"
 
 [tool.setuptools.package-data]
 sicp_homeassistant = [

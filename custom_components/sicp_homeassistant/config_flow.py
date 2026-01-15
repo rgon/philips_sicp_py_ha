@@ -11,7 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.exceptions import HomeAssistantError
 
-from sicppy.sicppy.ip_monitor import NetworkError
+from sicppy.ip_monitor import NetworkError
 
 from .const import CONF_MAC_ADDRESS, CONF_MONITOR_ID, DEFAULT_MONITOR_ID, DOMAIN
 from .coordinator import SicpDisplayClient

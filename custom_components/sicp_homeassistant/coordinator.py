@@ -10,13 +10,13 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from sicppy.sicppy.ip_monitor import (
+from sicppy.ip_monitor import (
     DEFAULT_PORT as SICP_DEFAULT_PORT,
     NetworkError,
     NotSupportedOrNotAvailableError,
     SICPIPMonitor,
 )
-from sicppy.sicppy.messages import (
+from sicppy.messages import (
     ColdStartPowerState,
     InputSource,
     ModelInfoFields,
