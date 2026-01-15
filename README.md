@@ -4,9 +4,49 @@ This repository contains a Python implementation of the Philips Signage Control 
 
 SICPpy also exposes a CLI to quickly interact with Philips Signage devices, as well as a programmatic API for building custom applications.
 
-## Requirements for CLI
-+ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
-+ Ready to run: `uv run python3 -m sicppy`
 
-## Manual installation for Home Assistant
-TODO
+## Home Assistant Integration install
+
+### Production install via HACS
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rgon&repository=philips_sicp_py_ha&category=Integration)
+
+### Development install
+1. Requires: [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
+2. Clone this repository
+3. Run the `release.sh` script
+4. Copy the generated `dist/sicp_homeassistant-<version>-py3-none-any.whl` file to your Home Assistant `custom_components` folder and unzip it there. Alternatively, you can install it via HACS using the local zip file option.
+----
+
+## CLI and SICPpy library
+
+### Requirements
++ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
++ Run cli: `uv run python3 -m sicppy` from the root of this repository
+
+```log
+$: uv run python3 -m sicppy
+Usage: sicppy <monitor_id|all> <command> [args]
+
+Available monitors:
+  0: Monitor ID 1: 192.168.xx.xxx
+  1: Monitor ID 1: 192.168.xx.xxx
+
+Commands:
+  get_android_4k_state
+     Get current Android 4K state.
+  get_apm_mode
+     Retrieve the current advanced power management mode.
+  get_auto_signal_mode
+     Retrieve the auto signal detection mode (SICP 2.05 onwards).
+  get_av_mute
+     Retrieve current A/V mute state.
+  get_backlight_state
+     Get current display backlight state.
+  get_brightness_level
+     Retrieve current brightness percentage via video parameters.
+  get_cold_start_power_state
+     Query cold-start power behavior.
+  get_color_temperature_mode
+
+...
+```
