@@ -23,7 +23,8 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
         self._entry = entry
         unique_source = entry.unique_id or entry.entry_id
         self._attr_unique_id = f"{unique_source}_{suffix}"
-        self._attr_name = f"{entry.title} {suffix}"
+        friendly_suffix = suffix.replace("_", " ").strip()
+        self._attr_name = friendly_suffix.title() if friendly_suffix else suffix
 
     @cached_property
     def device_info(self) -> DeviceInfo:
