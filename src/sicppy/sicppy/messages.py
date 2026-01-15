@@ -286,9 +286,6 @@ class ColorTemperatureMode(IntEnum):
     K1850 = 0x10
     USER2 = 0x12
 
-    USER_1 = USER1
-    USER_2 = USER2
-
 class PowerSaveMode(IntEnum):
     RGB_OFF_VIDEO_OFF = 0x00
     RGB_OFF_VIDEO_ON = 0x01
