@@ -485,7 +485,14 @@ class SICPProtocol:
 
 
     def set_smart_power_level(self, level: SmartPowerLevel):
-        """Set the smart power level."""
+        """
+        Set the smart power level.
+
+        Smart Power control is not relative to brightness control:
+            OFF: no adaptation
+            MEDIUM: 80% of power consumption relative to current settings
+            HIGH: 65% of power consumption relative to current settings
+        """
         message = construct_message(self.monitor_id, SICPCommand.SMART_POWER_SET, level.value)
         logger.debug(f"Sending set smart power level to {level} for Monitor ID {self.monitor_id}")
         response = self.send_message(message)
@@ -662,7 +669,7 @@ class SICPProtocol:
         return response and response.is_ack
 
 
-    def get_mute_status(self) -> bool:
+    def get_mute(self) -> bool:
         """Get mute status."""
         message = construct_message(self.monitor_id, SICPCommand.MUTE_GET)
         logger.debug(f"Sending get mute status to Monitor ID {self.monitor_id}")
@@ -682,7 +689,7 @@ class SICPProtocol:
         return response and response.is_ack
 
 
-    def get_av_mute_status(self) -> bool:
+    def get_av_mute(self) -> bool:
         """Retrieve current A/V mute state."""
         message = construct_message(self.monitor_id, SICPCommand.AV_MUTE_GET)
         logger.debug(f"Sending get A/V mute to Monitor ID {self.monitor_id}")
