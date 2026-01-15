@@ -1,7 +1,9 @@
 import sys
+from typing import TypeVar
+from enum import Enum
 
 from .ip_monitor import SICPIPMonitor
-from .protocol import _coerce_kelvin_to_step_value, _enum_choice_names, _parse_enum_token
+from .protocol import _coerce_kelvin_to_step_value
 from .messages import (
     ColdStartPowerState,
     PictureStyle,
@@ -27,10 +29,8 @@ DISPLAYS = {
     1: ("192.168.45.211", 1),  # Monitor ID 1
 }
 
-
-def _normalize_choice(value):
-    return value.lower().replace('_', '-').replace(' ', '-').strip()
-
+def convert_arg_to_enum_key(arg: str) -> str:
+    return arg.upper().replace('-', '_').replace(' ', '_').strip()
 
 def _enum_choice_list(enum_cls):
     return _enum_choice_names(enum_cls)
@@ -42,28 +42,6 @@ def _enum_choice_strings(enum_cls, aliases=None):
         choices.extend(aliases.keys())
     # dict.fromkeys preserves insertion order while removing duplicates
     return list(dict.fromkeys(sorted(choices)))
-
-
-def _resolve_enum_choice(enum_cls, raw_value, *, aliases=None, min_value=0, max_value=0xFF):
-    normalized = _normalize_choice(raw_value)
-    alias_map = aliases or {}
-    if normalized in alias_map:
-        return alias_map[normalized]
-
-    try:
-        return _parse_enum_token(enum_cls, raw_value).value
-    except ValueError:
-        pass
-
-    try:
-        parsed = int(raw_value, 0)
-    except ValueError:
-        parsed = None
-
-    if parsed is None or not (min_value <= parsed <= max_value):
-        raise ValueError(f"Invalid value '{raw_value}' for {enum_cls.__name__}")
-
-    return parsed
 
 
 AUTO_SIGNAL_ALIASES = {
@@ -435,7 +413,7 @@ def main():
         style_arg_raw = sys.argv[3]
 
         try:
-            style_enum = _parse_enum_token(PictureStyle, style_arg_raw)
+            style_enum = PictureStyle(PictureStyle, style_arg_raw)
         except ValueError:
             print("Error: Unknown picture style. Use a known name or 0-255 code.")
             print(f"Available styles: {', '.join(_enum_choice_list(PictureStyle))}")
@@ -495,9 +473,9 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_enum = _parse_enum_token(ColorTemperatureMode, mode_arg_raw)
+            mode_enum = ColorTemperatureMode[convert_arg_to_enum_key(mode_arg_raw)]
         except ValueError:
-            print("Error: Color temperature must match a known preset name or be a 0-255 code")
+            print("Error: Color temperature must match a known preset name") # or be a 0-255 code
             print(f"Available modes: {', '.join(_enum_choice_list(ColorTemperatureMode))}")
             sys.exit(1)
 
@@ -565,7 +543,7 @@ def main():
 
         pattern_arg_raw = sys.argv[3]
         try:
-            pattern_enum = _parse_enum_token(TestPattern, pattern_arg_raw)
+            pattern_enum = TestPattern[convert_arg_to_enum_key(pattern_arg_raw)]
         except ValueError:
             try:
                 parsed = int(pattern_arg_raw, 0)
@@ -602,12 +580,14 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_code = _resolve_enum_choice(RemoteLockState, mode_arg_raw)
-            mode_enum = RemoteLockState(mode_code)
-        except ValueError:
-            print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
-            print(f"Available modes: {', '.join(_enum_choice_list(RemoteLockState))}")
-            sys.exit(1)
+            mode_enum = RemoteLockState[convert_arg_to_enum_key(mode_arg_raw)]
+        except KeyError:
+            try:
+                mode_enum = RemoteLockState(int(mode_arg_raw, 0))
+            except ValueError:
+                print("Error: Unknown remote lock mode. Use a known name or 0-255 code.")
+                print(f"Available modes: {', '.join(_enum_choice_list(RemoteLockState))}")
+                sys.exit(1)
 
         for monitor in monitor_ids:
             if monitor.set_remote_lock_state(mode_enum):
@@ -621,13 +601,8 @@ def main():
 
         key_arg_raw = sys.argv[3]
         try:
-            key_code = _resolve_enum_choice(
-                RemoteKey,
-                key_arg_raw,
-                aliases=REMOTE_KEY_ALIASES,
-            )
-            key_enum = RemoteKey(key_code)
-        except ValueError:
+            key_enum = RemoteKey[convert_arg_to_enum_key(key_arg_raw)]
+        except KeyError:
             print("Error: Unknown remote key. Use a known name or 0-255 code.")
             print(f"Available keys: {', '.join(_enum_choice_strings(RemoteKey, REMOTE_KEY_ALIASES))}")
             sys.exit(1)
@@ -650,9 +625,8 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_code = _resolve_enum_choice(PowerOnLogoMode, mode_arg_raw)
-            mode_enum = PowerOnLogoMode(mode_code)
-        except ValueError:
+            mode_enum = PowerOnLogoMode[convert_arg_to_enum_key(mode_arg_raw)]
+        except KeyError:
             print("Error: Unknown power-on logo mode. Use off|on|user or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_list(PowerOnLogoMode))}")
             sys.exit(1)
@@ -708,15 +682,9 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_code = _resolve_enum_choice(
-                AutoSignalMode,
-                mode_arg_raw,
-                aliases=AUTO_SIGNAL_ALIASES,
-                max_value=0x05,
-            )
-            mode_enum = AutoSignalMode(mode_code)
+            mode_enum = AutoSignalMode[convert_arg_to_enum_key(mode_arg_raw)]
         except ValueError:
-            print("Error: Auto signal mode must be off|all|pc-only|video-only|failover or 0-5")
+            print("Error: Auto signal mode unknown")
             print(f"Available modes: {', '.join(_enum_choice_strings(AutoSignalMode, AUTO_SIGNAL_ALIASES))}")
             sys.exit(1)
 
@@ -742,12 +710,7 @@ def main():
 
         mode_arg_raw = sys.argv[3]
         try:
-            mode_code = _resolve_enum_choice(
-                PowerSaveMode,
-                mode_arg_raw,
-                aliases=POWER_SAVE_ALIASES,
-            )
-            mode_enum = PowerSaveMode(mode_code)
+            mode_enum = PowerSaveMode[convert_arg_to_enum_key(mode_arg_raw)]
         except ValueError:
             print("Error: Unknown power save mode. Use a known name or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_strings(PowerSaveMode, POWER_SAVE_ALIASES))}")
@@ -771,12 +734,7 @@ def main():
 
         level_arg_raw = sys.argv[3]
         try:
-            level_code = _resolve_enum_choice(
-                SmartPowerLevel,
-                level_arg_raw,
-                aliases=SMART_POWER_ALIASES,
-            )
-            level_enum = SmartPowerLevel(level_code)
+            level_enum = SmartPowerLevel[convert_arg_to_enum_key(level_arg_raw)]
         except ValueError:
             print("Error: Unknown smart power level. Use off|low|medium|high or 0-255 code.")
             print(f"Available levels: {', '.join(_enum_choice_strings(SmartPowerLevel, SMART_POWER_ALIASES))}")
@@ -800,12 +758,7 @@ def main():
 
         apm_arg_raw = sys.argv[3]
         try:
-            apm_code = _resolve_enum_choice(
-                ApmMode,
-                apm_arg_raw,
-                aliases=APM_ALIASES,
-            )
-            apm_enum = ApmMode(apm_code)
+            apm_enum = ApmMode[convert_arg_to_enum_key(apm_arg_raw)]
         except ValueError:
             print("Error: Unknown APM mode. Use off|on|mode1|mode2 or 0-255 code.")
             print(f"Available modes: {', '.join(_enum_choice_strings(ApmMode, APM_ALIASES))}")
@@ -958,8 +911,8 @@ def main():
             value_type = sys.argv[4].lower()
 
         try:
-            parameter_enum = _parse_enum_token(IPParameterCode, parameter_name)
-        except ValueError:
+            parameter_enum = IPParameterCode[convert_arg_to_enum_key(parameter_name)]
+        except KeyError:
             print(f"Error: Unknown IP parameter '{parameter_name}'.")
             print(f"Available parameters: {', '.join(_enum_choice_list(IPParameterCode))}")
             sys.exit(1)
@@ -1011,7 +964,7 @@ def main():
                 sys. exit(1)
         
         try:
-            input_source = _parse_enum_token(InputSource, input_source_arg)
+            input_source = InputSource[convert_arg_to_enum_key(input_source_arg)]
         except ValueError:
             print("Error: Unknown input source name.")
             print("Example sources: browser, mediaplayer, pdfplayer, hdmi1, hdmi2, displayport1")
