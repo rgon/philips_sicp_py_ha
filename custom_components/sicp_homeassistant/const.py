@@ -26,4 +26,4 @@ DATA_COORDINATOR = "coordinator"
 
 MANUFACTURER = "Philips"
 
-UPDATE_INTERVAL = timedelta(seconds=60)
+UPDATE_INTERVAL = timedelta(seconds=20)

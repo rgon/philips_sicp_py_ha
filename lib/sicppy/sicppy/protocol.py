@@ -93,7 +93,7 @@ class SICPProtocol:
             response = await self.send_message(message, expect_data=True)
         # if network error, return PowerState.OFFLINE
         except NetworkError as exc:
-            logger.error(f"Error getting power state for Monitor ID {self.monitor_id}: {exc}")
+            # logger.error(f"Error getting power state for Monitor ID {self.monitor_id}: {exc}")
             return PowerState.OFFLINE
 
         if not response or not response.data_payload:
