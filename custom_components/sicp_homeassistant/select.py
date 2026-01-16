@@ -58,6 +58,8 @@ def _friendly_name(enum_name: str) -> str:
 class PhilipsSicpEnumSelect(PhilipsSicpEntity, SelectEntity):
     """Base class for selects backed by Enum options."""
 
+    _attr_disable_on_offline = True
+
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry, suffix: str, enum_class) -> None:
         super().__init__(coordinator, entry, suffix)
         self._enum_class = enum_class

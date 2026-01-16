@@ -34,6 +34,7 @@ class PhilipsSicpLight(PhilipsSicpEntity, LightEntity):
     _attr_supported_color_modes = {ColorMode.COLOR_TEMP}
     _attr_min_color_temp_kelvin = 2000
     _attr_max_color_temp_kelvin = 10000
+    _attr_disable_on_offline = True
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "backlight")

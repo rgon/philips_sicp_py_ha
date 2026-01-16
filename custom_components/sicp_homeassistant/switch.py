@@ -96,6 +96,8 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
 class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
     """Switch entity that toggles the audio mute state."""
 
+    _attr_disable_on_offline = True
+
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "mute")
 

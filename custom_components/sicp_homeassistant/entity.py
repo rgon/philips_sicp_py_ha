@@ -7,6 +7,7 @@ from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, Device
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from sicppy.ip_monitor import NotSupportedOrNotAvailableError
+from sicppy.messages import PowerState
 
 from .const import CONF_MAC_ADDRESS, DOMAIN, MANUFACTURER
 from .coordinator import PhilipsSicpCoordinator
@@ -16,6 +17,7 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
     """Base class for SICP-backed entities."""
 
     _attr_has_entity_name = True
+    _attr_disable_on_offline = False
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry, suffix: str) -> None:
         super().__init__(coordinator)
@@ -47,7 +49,17 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
             serial_number=serial,
         )
 
+    def _is_display_offline(self) -> bool:
+        data = self.coordinator.data
+        return bool(data and data.power_state == PowerState.OFFLINE)
 
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        if self._attr_disable_on_offline and self._is_display_offline():
+            return False
+        return True
     async def _async_call_client(self, func, *args, error_hint: str | None = None):
         """Invoke a client method and normalize errors."""
         try:
