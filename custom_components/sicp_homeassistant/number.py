@@ -24,21 +24,21 @@ async def async_setup_entry(
     async_add_entities([PhilipsSicpVolumeNumber(coordinator, entry)])
 
 
-class PhilipsSicpVolumeNumber(PhilipsSicpEntity): #, NumberEntity):
+class PhilipsSicpVolumeNumber(PhilipsSicpEntity, NumberEntity):
     """Speaker volume slider (0-100%)."""
 
-    _attr_native_min_value = 0
-    _attr_native_max_value = 100
-    _attr_native_step = 1
-    _attr_mode = NumberMode.SLIDER
-    _attr_native_unit_of_measurement = PERCENTAGE
+    min_value = 0
+    max_value = 100
+    step = 1
+    mode = NumberMode.SLIDER
+    native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "speaker_volume")
 
     @property
     def native_value(self) -> float | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data:
             return None
         return data.volume_speaker

@@ -9,7 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from sicppy.ip_monitor import NotSupportedOrNotAvailableError
 
 from .const import CONF_MAC_ADDRESS, DOMAIN, MANUFACTURER
-from .coordinator import PhilipsSicpCoordinator, SicpDisplayData
+from .coordinator import PhilipsSicpCoordinator
 
 
 class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
@@ -38,7 +38,6 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
 
         if not connections:
             raise HomeAssistantError("Cannot determine device connections for SICP display.")
-
         self._attr_device_info = DeviceInfo(
             identifiers=identifiers,
             connections=connections,
@@ -48,10 +47,6 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
             serial_number=serial,
         )
 
-    @property
-    def sicp_data(self) -> SicpDisplayData | None:
-        """Shortcut to the latest coordinator data."""
-        return self.coordinator.data
 
     async def _async_call_client(self, func, *args, error_hint: str | None = None):
         """Invoke a client method and normalize errors."""

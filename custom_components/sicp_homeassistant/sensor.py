@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import cached_property
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ATTRIBUTION, UnitOfTemperature
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -50,17 +49,17 @@ class PhilipsSicpTemperatureSensor(PhilipsSicpSensorEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "temperature")
 
-    @cached_property
+    @property
     def extra_state_attributes(self) -> Mapping[str, list[int]] | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         temps = data.temperatures if data else None
         if not temps:
             return None
         return {"temperature_sensors": temps}
 
-    @cached_property
+    @property
     def native_value(self) -> int | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         temps = data.temperatures if data else None
         if not temps or len(temps) == 0:
             return None
@@ -75,19 +74,21 @@ class PhilipsFirmwareVersionSensor(PhilipsSicpSensorEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "model_info")
 
-    @cached_property
+    @property
     def extra_state_attributes(self) -> Mapping[str, str] | None:
-        data = self.sicp_data.model_info if self.sicp_data else None
-        if not data:
+        data = self.coordinator.data
+        model_info = data.model_info if data else None
+        if not model_info:
             return None
-        return data
+        return model_info
 
-    @cached_property
+    @property
     def native_value(self) -> str | None:
-        data = self.sicp_data.model_info if self.sicp_data else None
-        if not data:
+        data = self.coordinator.data
+        model_info = data.model_info if data else None
+        if not model_info:
             return None
-        return data.get("firmware_version")
+        return model_info.get("firmware_version")
 
 class PhilipsSicpSicpInfoSensor(PhilipsSicpSensorEntity):
     """Sensor exposing the SICP firmware information."""
@@ -97,19 +98,21 @@ class PhilipsSicpSicpInfoSensor(PhilipsSicpSensorEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "sicp_info")
 
-    @cached_property
+    @property
     def extra_state_attributes(self) -> Mapping[str, str] | None:
-        data = self.sicp_data.sicp_info if self.sicp_data else None
-        if not data:
+        data = self.coordinator.data
+        sicp_info = data.sicp_info if data else None
+        if not sicp_info:
             return None
-        return data
+        return sicp_info
 
-    @cached_property
+    @property
     def native_value(self) -> str | None:
-        data = self.sicp_data.sicp_info if self.sicp_data else None
-        if not data:
+        data = self.coordinator.data
+        sicp_info = data.sicp_info if data else None
+        if not sicp_info:
             return None
-        return data.get("platform_version")
+        return sicp_info.get("platform_version")
 
 
 class PhilipsSicpPowerStateSensor(PhilipsSicpSensorEntity):
@@ -120,9 +123,9 @@ class PhilipsSicpPowerStateSensor(PhilipsSicpSensorEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "power_state")
 
-    @cached_property
+    @property
     def native_value(self) -> str:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.power_state:
             return "offline"
         return "on" if data.power_state == PowerState.POWER_ON else "off"

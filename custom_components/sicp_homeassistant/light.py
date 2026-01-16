@@ -11,8 +11,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from functools import cached_property
-
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import PhilipsSicpCoordinator
 from .entity import PhilipsSicpEntity
@@ -40,31 +38,31 @@ class PhilipsSicpLight(PhilipsSicpEntity, LightEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "backlight")
 
-    @cached_property
+    @property
     def is_on(self) -> bool | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data:
             return None
         return data.backlight_on
 
-    @cached_property
+    @property
     def brightness(self) -> int | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or data.brightness is None:
             return None
         return int(data.brightness / 100 * 255)
 
-    @cached_property
+    @property
     def color_mode(self) -> ColorMode:
         return ColorMode.COLOR_TEMP
-        # data = self.sicp_data
+        # data = self.coordinator.data
         # if data and data.precise_color_temperature:
         #     return ColorMode.COLOR_TEMP
         # return ColorMode.BRIGHTNESS
 
     @property
     def color_temp_kelvin(self) -> int | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.precise_color_temperature:
             return None
         return data.precise_color_temperature

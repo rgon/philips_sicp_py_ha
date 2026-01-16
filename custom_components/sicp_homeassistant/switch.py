@@ -1,6 +1,5 @@
 """Switch entities for Philips SICP displays."""
 from __future__ import annotations
-from functools import cached_property
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -39,14 +38,14 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity): #, SwitchEntity):
 
     @property
     def is_on(self) -> bool | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.power_state:
             return None
         return data.power_state == PowerState.POWER_ON
 
-    @cached_property
+    @property
     def extra_state_attributes(self) -> dict[str, str]:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data:
             return {"power_state": "offline"}
         if not data.power_state:
@@ -76,9 +75,9 @@ class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "mute")
 
-    @cached_property
+    @property
     def is_on(self) -> bool | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if data is None:
             return None
         return data.mute

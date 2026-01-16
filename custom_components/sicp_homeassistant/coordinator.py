@@ -78,7 +78,12 @@ class SicpDisplayClient:
 
     async def fetch_status(self) -> SicpDisplayData:
         """Fetch the latest state from the display."""
-        power_state = await self._monitor.get_power_state()
+
+        power_state:PowerState | None = None
+        try:
+            power_state = await self._monitor.get_power_state()
+        except Exception:
+            _LOGGER.debug("Unable to read power state", exc_info=True)
 
         brightness: int | None = None
         try:
@@ -102,10 +107,30 @@ class SicpDisplayClient:
         except Exception:
             _LOGGER.debug("Unable to read backlight state", exc_info=True)
 
-        temperatures = await self._monitor.get_temperature()
-        serial_number = await self._monitor.get_serial_number()
-        model_info = await self._collect_model_info()
-        sicp_info = await self._collect_sicp_info()
+        temperatures = []
+        try:
+            temperatures = await self._monitor.get_temperature()
+        except Exception:
+            _LOGGER.debug("Unable to read temperature sensors", exc_info=True)
+
+        # will raise an error if unable to read
+        serial_number = None
+        try:
+            serial_number = await self._monitor.get_serial_number()
+        except Exception:
+            _LOGGER.debug("Unable to read serial number", exc_info=True)
+        
+        model_info: dict[str, str] = {}
+        try:
+            model_info = await self._collect_model_info()
+        except Exception:
+            _LOGGER.debug("Unable to read model info", exc_info=True)
+        
+        sicp_info: dict[str, str] = {}
+        try:
+            sicp_info = await self._collect_sicp_info()
+        except Exception:
+            _LOGGER.debug("Unable to read SICP info", exc_info=True)
 
         smart_power_level: SmartPowerLevel | None = None
         try:
@@ -114,7 +139,7 @@ class SicpDisplayClient:
             _LOGGER.debug("Smart power level unsupported")
         except Exception:
             _LOGGER.debug("Unable to read smart power level", exc_info=True)
-
+        
         power_on_logo_mode: PowerOnLogoMode | None = None
         try:
             power_on_logo_mode = await self._monitor.get_power_on_logo_mode()
@@ -255,11 +280,12 @@ class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
     async def _async_update_data(self) -> SicpDisplayData:
         """Fetch data from SICP endpoint in display."""
         try:
-            return await self.async_call_client(self._client.fetch_status)
+            self.data = await self.async_call_client(self._client.fetch_status)
         except NetworkError as exc:
             raise UpdateFailed("Unable to reach Philips display") from exc
         except Exception as exc:  # noqa: BLE001
             raise UpdateFailed(str(exc)) from exc
+        return self.data
 
     @property
     def client(self) -> SicpDisplayClient:

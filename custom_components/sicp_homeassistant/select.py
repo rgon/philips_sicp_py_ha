@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from functools import cached_property
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -67,7 +66,7 @@ class PhilipsSicpEnumSelect(PhilipsSicpEntity, SelectEntity):
             label = _friendly_name(member.name)
             self._option_map[label] = member
 
-    @cached_property
+    @property
     def options(self) -> list[str]:
         return list(self._option_map.keys())
 
@@ -98,9 +97,9 @@ class PhilipsSicpSmartPowerSelect(PhilipsSicpEnumSelect):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "smart_power", SmartPowerLevel)
 
-    @cached_property
+    @property
     def current_option(self) -> str | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.smart_power_level:
             return None
         return self._option_from_enum(data.smart_power_level)
@@ -119,9 +118,9 @@ class PhilipsSicpPowerOnLogoSelect(PhilipsSicpEnumSelect):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "power_on_logo", PowerOnLogoMode)
 
-    @cached_property
+    @property
     def current_option(self) -> str | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.power_on_logo_mode:
             return None
         return self._option_from_enum(data.power_on_logo_mode)
@@ -140,9 +139,9 @@ class PhilipsSicpColdStartSelect(PhilipsSicpEnumSelect):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "cold_start", ColdStartPowerState)
 
-    @cached_property
+    @property
     def current_option(self) -> str | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.cold_start_state:
             return None
         return self._option_from_enum(data.cold_start_state)
@@ -161,9 +160,9 @@ class PhilipsSicpInputSourceSelect(PhilipsSicpEnumSelect):
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "input_source", InputSource)
 
-    @cached_property
+    @property
     def current_option(self) -> str | None:
-        data = self.sicp_data
+        data = self.coordinator.data
         if not data or not data.input_source:
             return None
         return self._option_from_enum(data.input_source)
