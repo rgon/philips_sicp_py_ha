@@ -2,6 +2,7 @@ import string
 from abc import abstractmethod
 import logging
 
+from .errors import NetworkError
 from .messages import (
     construct_message,
     SICPCommand,
@@ -88,8 +89,14 @@ class SICPProtocol:
         """Query current power state."""
         message = construct_message(self.monitor_id, SICPCommand.POWER_STATE_GET)
         logger.debug(f"Get power state for Monitor ID {self.monitor_id}")
-        response = await self.send_message(message, expect_data=True)
-        if not response:
+        try:
+            response = await self.send_message(message, expect_data=True)
+        # if network error, return PowerState.OFFLINE
+        except NetworkError as exc:
+            logger.error(f"Error getting power state for Monitor ID {self.monitor_id}: {exc}")
+            return PowerState.OFFLINE
+
+        if not response or not response.data_payload:
             raise RuntimeError("Unable to read power state")
 
         try:
@@ -126,24 +133,18 @@ class SICPProtocol:
         message = construct_message(self.monitor_id, SICPCommand.TEMPERATURE_GET)
         logger.debug(f"Get temperature for Monitor ID {self.monitor_id}")
         response = await self.send_message(message, expect_data=True)
+        if not response or not response.data_payload:
+            raise RuntimeError("Unable to read temperature sensors")
+    
+        temps = []
+        for idx, value in enumerate(response.data_payload):
+            # Some platforms may return invalid 0xFF for unused sensors
+            if value == 0xFF:
+                continue
+            temps.append(value)
 
-        if response and response.is_data_response:
-            payload = response.data_payload
-            if payload and response.data_payload[0] == SICPCommand.TEMPERATURE_GET:
-                payload = payload[1:]
-
-            if not payload:
-                return None
-
-            temps = []
-            for idx, value in enumerate(payload, start=1):
-                # Some platforms may return invalid 0xFF for unused sensors
-                if value == 0xFF:
-                    continue
-                temps.append(value)
-
-            if temps:
-                return temps
+        if temps:
+            return temps
 
         return None
 
@@ -628,15 +629,11 @@ class SICPProtocol:
 
     async def set_volume(self, speaker_level: int|None = None, audio_out_level: int|None = None):
         """Set speaker/audio-out volume (0-100, None = no change)."""
-        async def _validate(label, value):
-            if value is None:
-                return None
-            if not 0 <= value <= 100:
-                raise ValueError(f"{label} volume must be between 0 and 100")
-            return value
+        if speaker_level is not None and not 0 <= speaker_level <= 100:
+            raise ValueError("Speaker volume must be between 0 and 100")
 
-        speaker_level = _validate("Speaker", speaker_level)
-        audio_out_level = _validate("Audio out", audio_out_level)
+        if audio_out_level is not None and not 0 <= audio_out_level <= 100:
+            raise ValueError("Audio out volume must be between 0 and 100")
 
         message = build_volume_set_message(self.monitor_id, speaker_level, audio_out_level)
         speaker_desc = "no change" if speaker_level is None else f"{speaker_level}%"

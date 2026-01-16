@@ -74,6 +74,8 @@ class PowerState(IntEnum):
     POWER_OFF = 0x01
     POWER_ON = 0x02
 
+    OFFLINE = 0x00  # Not powered / no response
+
 # Cold-start Power States
 class ColdStartPowerState(IntEnum):
     COLD_START_POWER_OFF = 0x00

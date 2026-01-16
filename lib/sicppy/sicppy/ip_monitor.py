@@ -4,22 +4,10 @@ import asyncio
 
 from .response import SicpResponse
 from .protocol import SICPProtocol
-
+from .errors import NetworkError, ProtocolError, NotSupportedOrNotAvailableError, ChecksumOrFormatError
 
 DEFAULT_PORT = 5000
 TIMEOUT = 2
-
-class ChecksumOrFormatError(Exception):
-    """Exception for checksum or format errors (NACK responses)."""
-    pass
-
-class NotSupportedOrNotAvailableError(Exception):
-    """Exception for not supported or not available commands (NAV responses)."""
-    pass
-
-class NetworkError(Exception):
-    """Exception for network-related errors."""
-    pass
 
 class SICPIPMonitor(SICPProtocol):
     def __init__(self, ip:str, monitor_id=1, port=DEFAULT_PORT) -> None:
@@ -59,7 +47,7 @@ class SICPIPMonitor(SICPProtocol):
         except OSError as exc:
             raise NetworkError(exc) from exc
         except Exception as exc:
-            raise NetworkError(exc) from exc
+            raise Exception(exc) from exc
         finally:
             if writer is not None:
                 writer.close()
@@ -71,7 +59,7 @@ class SICPIPMonitor(SICPProtocol):
         if not expect_data:
             return None  # No response expected for broadcast commands
         if not response_data:
-            raise NetworkError("No response received from monitor")
+            raise ProtocolError("No response received from monitor")
 
         try:
             response = SicpResponse(response_data)
@@ -92,4 +80,4 @@ class SICPIPMonitor(SICPProtocol):
 
             return response
         except IndexError as exc:
-            raise NetworkError("Malformed response payload") from exc
+            raise ProtocolError("Malformed response payload") from exc
