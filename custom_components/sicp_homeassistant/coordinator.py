@@ -1,13 +1,16 @@
 """Coordinator and client helpers for the Philips SICP display integration."""
 from __future__ import annotations
 
+import asyncio
+import inspect
+import logging
 from dataclasses import dataclass
 from typing import Any, Mapping
-import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from sicppy.ip_monitor import (
@@ -34,6 +37,8 @@ from .const import (
     UPDATE_INTERVAL,
 )
 
+REQUEST_REFRESH_DELAY = 0.5
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -59,7 +64,7 @@ class SicpDisplayData:
 
 
 class SicpDisplayClient:
-    """Blocking client that proxies calls to a Philips SICP display."""
+    """Async client that proxies calls to a Philips SICP display."""
 
     def __init__(self, entry_data: Mapping[str, Any]) -> None:
         host = entry_data.get(CONF_HOST)
@@ -71,13 +76,13 @@ class SicpDisplayClient:
 
         self._monitor = SICPIPMonitor(host, monitor_id=monitor_id, port=port)
 
-    def fetch_status(self) -> SicpDisplayData:
+    async def fetch_status(self) -> SicpDisplayData:
         """Fetch the latest state from the display."""
-        power_state = self._monitor.get_power_state()
+        power_state = await self._monitor.get_power_state()
 
         brightness: int | None = None
         try:
-            brightness = self._monitor.get_brightness_level()
+            brightness = await self._monitor.get_brightness_level()
         except NotSupportedOrNotAvailableError:
             _LOGGER.debug("Brightness level unsupported on this source or power saving mode")
         except Exception:  # noqa: BLE001 - optional metric, ignore
@@ -85,7 +90,7 @@ class SicpDisplayClient:
 
         precise_color_temperature: int | None = None
         try:
-            precise_color_temperature = self._monitor.get_precise_color_temperature()
+            precise_color_temperature = await self._monitor.get_precise_color_temperature()
         except NotSupportedOrNotAvailableError:
             _LOGGER.debug("Precise color temperature unsupported on this source")
         except Exception:
@@ -93,18 +98,18 @@ class SicpDisplayClient:
 
         backlight_on: bool | None = None
         try:
-            backlight_on = self._monitor.get_backlight_state()
+            backlight_on = await self._monitor.get_backlight_state()
         except Exception:
             _LOGGER.debug("Unable to read backlight state", exc_info=True)
 
-        temperatures = self._monitor.get_temperature()
-        serial_number = self._monitor.get_serial_number()
-        model_info = self._collect_model_info()
-        sicp_info = self._collect_sicp_info()
+        temperatures = await self._monitor.get_temperature()
+        serial_number = await self._monitor.get_serial_number()
+        model_info = await self._collect_model_info()
+        sicp_info = await self._collect_sicp_info()
 
         smart_power_level: SmartPowerLevel | None = None
         try:
-            smart_power_level = self._monitor.get_smart_power_level()
+            smart_power_level = await self._monitor.get_smart_power_level()
         except NotSupportedOrNotAvailableError:
             _LOGGER.debug("Smart power level unsupported")
         except Exception:
@@ -112,7 +117,7 @@ class SicpDisplayClient:
 
         power_on_logo_mode: PowerOnLogoMode | None = None
         try:
-            power_on_logo_mode = self._monitor.get_power_on_logo_mode()
+            power_on_logo_mode = await self._monitor.get_power_on_logo_mode()
         except NotSupportedOrNotAvailableError:
             _LOGGER.debug("Power-on logo control unsupported")
         except Exception:
@@ -120,26 +125,26 @@ class SicpDisplayClient:
 
         cold_start_state: ColdStartPowerState | None = None
         try:
-            cold_start_state = self._monitor.get_cold_start_power_state()
+            cold_start_state = await self._monitor.get_cold_start_power_state()
         except Exception:
             _LOGGER.debug("Unable to read cold-start power state", exc_info=True)
 
         input_source: InputSource | None = None
         try:
-            input_source = self._monitor.get_input_source()
+            input_source = await self._monitor.get_input_source()
         except Exception:
             _LOGGER.debug("Unable to read input source", exc_info=True)
 
         volume_speaker: int | None = None
         volume_audio_out: int | None = None
         try:
-            volume_speaker, volume_audio_out = self._monitor.get_volume()
+            volume_speaker, volume_audio_out = await self._monitor.get_volume()
         except Exception:
             _LOGGER.debug("Unable to read volume levels", exc_info=True)
 
         mute: bool | None = None
         try:
-            mute = self._monitor.get_mute()
+            mute = await self._monitor.get_mute()
         except Exception:
             _LOGGER.debug("Unable to read mute state", exc_info=True)
 
@@ -161,60 +166,70 @@ class SicpDisplayClient:
             mute=mute,
         )
 
-    def set_power(self, power_on: bool) -> bool:
+    async def set_power(self, power_on: bool) -> bool:
         """Set the display power state."""
-        return bool(self._monitor.set_power(power_on))
+        return bool(await self._monitor.set_power(power_on))
 
-    def set_brightness_percent(self, percent: int) -> bool:
+    async def set_brightness_percent(self, percent: int) -> bool:
         """Set display brightness in percent (0-100)."""
-        return bool(self._monitor.set_brightness_level(percent))
+        return bool(await self._monitor.set_brightness_level(percent))
 
-    def set_precise_color_temperature(self, kelvin: int) -> bool:
+    async def set_precise_color_temperature(self, kelvin: int) -> bool:
         """Set the precise color temperature in Kelvin."""
-        return bool(self._monitor.set_precise_color_temperature(kelvin))
+        return bool(await self._monitor.set_precise_color_temperature(kelvin))
 
-    def set_backlight(self, backlight_on: bool) -> bool:
+    async def set_backlight(self, backlight_on: bool) -> bool:
         """Control the backlight state."""
-        return bool(self._monitor.set_backlight(backlight_on))
+        return bool(await self._monitor.set_backlight(backlight_on))
 
-    def set_smart_power_level(self, level: SmartPowerLevel) -> bool:
-        return bool(self._monitor.set_smart_power_level(level))
+    async def set_smart_power_level(self, level: SmartPowerLevel) -> bool:
+        return bool(await self._monitor.set_smart_power_level(level))
 
-    def set_power_on_logo_mode(self, mode: PowerOnLogoMode) -> bool:
-        return bool(self._monitor.set_power_on_logo_mode(mode))
+    async def set_power_on_logo_mode(self, mode: PowerOnLogoMode) -> bool:
+        return bool(await self._monitor.set_power_on_logo_mode(mode))
 
-    def set_cold_start_power_state(self, state: ColdStartPowerState) -> bool:
-        return bool(self._monitor.set_cold_start_power_state(state))
+    async def set_cold_start_power_state(self, state: ColdStartPowerState) -> bool:
+        return bool(await self._monitor.set_cold_start_power_state(state))
 
-    def set_input_source(self, source: InputSource) -> bool:
-        return bool(self._monitor.set_input_source(source))
+    async def set_input_source(self, source: InputSource) -> bool:
+        return bool(await self._monitor.set_input_source(source))
 
-    def set_mute(self, mute_on: bool) -> bool:
-        return bool(self._monitor.set_mute(mute_on))
+    async def set_mute(self, mute_on: bool) -> bool:
+        return bool(await self._monitor.set_mute(mute_on))
 
-    def set_volume(self, speaker_level: int) -> bool:
-        return bool(self._monitor.set_volume(speaker_level=speaker_level))
+    async def set_volume(self, speaker_level: int) -> bool:
+        return bool(await self._monitor.set_volume(speaker_level=speaker_level))
 
-    def _collect_model_info(self) -> dict[str, str]:
-        return {
-            "model_number": self._monitor.get_model_info(ModelInfoFields.MODEL_NUMBER),
-            "firmware_version": self._monitor.get_model_info(ModelInfoFields.FIRMWARE_VERSION),
-            "build_date": self._monitor.get_model_info(ModelInfoFields.BUILD_DATE),
-            "android_firmware": self._monitor.get_model_info(ModelInfoFields.ANDROID_FIRMWARE),
+    async def _collect_model_info(self) -> dict[str, str]:
+        fields = {
+            "model_number": ModelInfoFields.MODEL_NUMBER,
+            "firmware_version": ModelInfoFields.FIRMWARE_VERSION,
+            "build_date": ModelInfoFields.BUILD_DATE,
+            "android_firmware": ModelInfoFields.ANDROID_FIRMWARE,
         }
+        info: dict[str, str] = {}
+        for key, enum_field in fields.items():
+            try:
+                info[key] = await self._monitor.get_model_info(enum_field)
+            except (IndexError, NetworkError, RuntimeError):
+                _LOGGER.debug("Unable to read %s from model info", key, exc_info=True)
+        return info
 
-    def _collect_sicp_info(self) -> dict[str, str]:
-        custom_intent_version: str | None = None
-        try:
-            custom_intent_version = self._monitor.get_sicp_info(SicpInfoFields.CUSTOM_INTENT_VERSION)
-        except NotSupportedOrNotAvailableError:
-            custom_intent_version = "N/A"
-
-        return {
-            "platform_label": self._monitor.get_sicp_info(SicpInfoFields.PLATFORM_LABEL),
-            "platform_version": self._monitor.get_sicp_info(SicpInfoFields.PLATFORM_VERSION),
-            "custom_intent_version": custom_intent_version,
+    async def _collect_sicp_info(self) -> dict[str, str]:
+        info: dict[str, str] = {}
+        fields = {
+            "platform_label": SicpInfoFields.PLATFORM_LABEL,
+            "platform_version": SicpInfoFields.PLATFORM_VERSION,
+            "custom_intent_version": SicpInfoFields.CUSTOM_INTENT_VERSION,
         }
+        for key, enum_field in fields.items():
+            try:
+                info[key] = await self._monitor.get_sicp_info(enum_field)
+            except NotSupportedOrNotAvailableError:
+                info[key] = "N/A"
+            except (IndexError, NetworkError, RuntimeError):
+                _LOGGER.debug("Unable to read %s from SICP info", key, exc_info=True)
+        return info
 
 
 class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
@@ -227,13 +242,20 @@ class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
             name=f"{DOMAIN}_{config_entry.title}",
             config_entry=config_entry,
             update_interval=UPDATE_INTERVAL,
+            request_refresh_debouncer=Debouncer(
+                hass,
+                _LOGGER,
+                cooldown=REQUEST_REFRESH_DELAY,
+                immediate=False,
+            ),
         )
         self._client = client
+        self._lock = asyncio.Lock()
 
     async def _async_update_data(self) -> SicpDisplayData:
         """Fetch data from SICP endpoint in display."""
         try:
-            return await self.hass.async_add_executor_job(self._client.fetch_status)
+            return await self.async_call_client(self._client.fetch_status)
         except NetworkError as exc:
             raise UpdateFailed("Unable to reach Philips display") from exc
         except Exception as exc:  # noqa: BLE001
@@ -243,6 +265,14 @@ class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
     def client(self) -> SicpDisplayClient:
         """Expose the underlying client to entities for control operations."""
         return self._client
+
+    async def async_call_client(self, func, *args):
+        """Serialize access to the SICP client and await the result."""
+        async with self._lock:
+            result = func(*args)
+            if inspect.isawaitable(result):
+                return await result
+            return result
 
     @property
     def serial_number(self) -> str | None:

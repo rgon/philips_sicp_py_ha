@@ -54,9 +54,9 @@ class PhilipsSicpEntity(CoordinatorEntity[PhilipsSicpCoordinator]):
         return self.coordinator.data
 
     async def _async_call_client(self, func, *args, error_hint: str | None = None):
-        """Run a blocking client method and normalize errors."""
+        """Invoke a client method and normalize errors."""
         try:
-            return await self.hass.async_add_executor_job(func, *args)
+            return await self.coordinator.async_call_client(func, *args)
         except NotSupportedOrNotAvailableError as exc:
             message = error_hint or "This function is not available on the current display/source."
             raise HomeAssistantError(message) from exc

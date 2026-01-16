@@ -103,7 +103,7 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         client = SicpDisplayClient(entry_data)
         try:
-            data = await hass.async_add_executor_job(client.fetch_status)
+            data = await client.fetch_status()
         except NetworkError as exc:
             raise CannotConnect from exc
         except Exception as exc:  # noqa: BLE001
