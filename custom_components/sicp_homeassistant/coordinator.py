@@ -10,7 +10,6 @@ from typing import Any, Mapping
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from sicppy.ip_monitor import (
@@ -36,8 +35,6 @@ from .const import (
     DOMAIN,
     UPDATE_INTERVAL,
 )
-
-REQUEST_REFRESH_DELAY = 0.5
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -216,8 +213,8 @@ class SicpDisplayClient:
     async def set_cold_start_power_state(self, state: ColdStartPowerState) -> bool:
         return bool(await self._monitor.set_cold_start_power_state(state))
 
-    async def set_input_source(self, source: InputSource) -> bool:
-        return bool(await self._monitor.set_input_source(source))
+    async def set_input_source(self, source: InputSource, playlist: int = 0) -> bool:
+        return bool(await self._monitor.set_input_source(source, playlist=playlist))
 
     async def set_mute(self, mute_on: bool) -> bool:
         return bool(await self._monitor.set_mute(mute_on))
@@ -267,12 +264,6 @@ class PhilipsSicpCoordinator(DataUpdateCoordinator[SicpDisplayData]):
             name=f"{DOMAIN}_{config_entry.title}",
             config_entry=config_entry,
             update_interval=UPDATE_INTERVAL,
-            request_refresh_debouncer=Debouncer(
-                hass,
-                _LOGGER,
-                cooldown=REQUEST_REFRESH_DELAY,
-                immediate=False,
-            ),
         )
         self._client = client
         self._lock = asyncio.Lock()

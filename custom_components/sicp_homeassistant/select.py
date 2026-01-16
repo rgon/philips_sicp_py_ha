@@ -161,6 +161,16 @@ class PhilipsSicpInputSourceSelect(PhilipsSicpEnumSelect):
 
     def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "input_source", InputSource)
+        self._playlist_options: OrderedDict[str, tuple[InputSource, int]] = OrderedDict()
+        playlist_sources = (
+            InputSource.MEDIAPLAYER,
+            InputSource.BROWSER,
+        )
+        for source in playlist_sources:
+            base_label = _friendly_name(source.name)
+            for playlist_id in (1, 2):
+                label = f"{base_label} Playlist {playlist_id}"
+                self._playlist_options[label] = (source, playlist_id)
 
     @property
     def current_option(self) -> str | None:
@@ -169,9 +179,27 @@ class PhilipsSicpInputSourceSelect(PhilipsSicpEnumSelect):
             return None
         return self._option_from_enum(data.input_source)
 
+    @property
+    def options(self) -> list[str]:
+        base_options = super().options
+        return base_options + list(self._playlist_options.keys())
+
     async def _async_set_enum(self, enum_value: InputSource) -> None:
+        await self._async_set_input_source(enum_value)
+
+    async def async_select_option(self, option: str) -> None:
+        playlist_target = self._playlist_options.get(option)
+        if playlist_target:
+            source, playlist_id = playlist_target
+            await self._async_set_input_source(source, playlist_id)
+            await self.coordinator.async_request_refresh()
+            return
+        await super().async_select_option(option)
+
+    async def _async_set_input_source(self, enum_value: InputSource, playlist: int = 0) -> None:
         await self._async_call_client(
             self.coordinator.client.set_input_source,
             enum_value,
+            playlist,
             error_hint="Unable to switch input source",
         )
