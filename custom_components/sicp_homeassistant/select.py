@@ -100,7 +100,7 @@ class PhilipsSicpSmartPowerSelect(PhilipsSicpEnumSelect):
     @property
     def current_option(self) -> str | None:
         data = self.coordinator.data
-        if not data or not data.smart_power_level:
+        if not data or data.smart_power_level is None:
             return None
         return self._option_from_enum(data.smart_power_level)
 
@@ -121,7 +121,7 @@ class PhilipsSicpPowerOnLogoSelect(PhilipsSicpEnumSelect):
     @property
     def current_option(self) -> str | None:
         data = self.coordinator.data
-        if not data or not data.power_on_logo_mode:
+        if not data or data.power_on_logo_mode is None:
             return None
         return self._option_from_enum(data.power_on_logo_mode)
 
@@ -142,7 +142,7 @@ class PhilipsSicpColdStartSelect(PhilipsSicpEnumSelect):
     @property
     def current_option(self) -> str | None:
         data = self.coordinator.data
-        if not data or not data.cold_start_state:
+        if not data or data.cold_start_state is None:
             return None
         return self._option_from_enum(data.cold_start_state)
 
@@ -163,7 +163,7 @@ class PhilipsSicpInputSourceSelect(PhilipsSicpEnumSelect):
     @property
     def current_option(self) -> str | None:
         data = self.coordinator.data
-        if not data or not data.input_source:
+        if not data or data.input_source is None:
             return None
         return self._option_from_enum(data.input_source)
 
