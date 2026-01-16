@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import socket
+import asyncio
 
 from .response import SicpResponse
 from .protocol import SICPProtocol
@@ -27,7 +27,7 @@ class SICPIPMonitor(SICPProtocol):
         self.ip = ip
         self.port = port
 
-    def send_message(self, message, expect_data=False) -> SicpResponse | None:
+    async def send_message(self, message, expect_data=False) -> SicpResponse | None:
         """
         Send SICP message to display and return parsed response.
         
@@ -40,29 +40,40 @@ class SICPIPMonitor(SICPProtocol):
         Returns:
             SicpResponse object or None on error
         """
-        try: 
-            response_data = None
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(TIMEOUT)
-                sock.connect((self.ip, self.port))
-                sock.sendall(message)
-                
-                # Receive response
-                if expect_data:
-                    response_data = sock.recv(1024)
-            
-        except socket.timeout as exc:
-            raise NetworkError(exc) from exc
-        except socket.error as exc:
+        reader = None
+        writer = None
+        response_data = None
+
+        try:
+            connect_coro = asyncio.open_connection(self.ip, self.port)
+            reader, writer = await asyncio.wait_for(connect_coro, timeout=TIMEOUT)
+
+            writer.write(message)
+            await asyncio.wait_for(writer.drain(), timeout=TIMEOUT)
+
+            if expect_data:
+                response_data = await asyncio.wait_for(reader.read(1024), timeout=TIMEOUT)
+
+        except asyncio.TimeoutError as exc:
+            raise NetworkError("Communication timed out") from exc
+        except OSError as exc:
             raise NetworkError(exc) from exc
         except Exception as exc:
             raise NetworkError(exc) from exc
-        else:
-            if not expect_data:
-                return None  # No response expected for broadcast commands
-            if not response_data:
-                raise NetworkError("No response received from monitor")
+        finally:
+            if writer is not None:
+                writer.close()
+                try:
+                    await writer.wait_closed()
+                except Exception:
+                    pass
 
+        if not expect_data:
+            return None  # No response expected for broadcast commands
+        if not response_data:
+            raise NetworkError("No response received from monitor")
+
+        try:
             response = SicpResponse(response_data)
 
             if response.is_nav:
@@ -80,3 +91,5 @@ class SICPIPMonitor(SICPProtocol):
                 response.data_payload = payload
 
             return response
+        except IndexError as exc:
+            raise NetworkError("Malformed response payload") from exc
