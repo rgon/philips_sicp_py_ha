@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 from typing import Any
 from enum import Enum
 
@@ -68,42 +70,70 @@ class CommandError(Exception):
     pass
 
 def execute_command_on_class_instance(instance:Any, command_name:str, command_args:list[str]) -> Any:
-    """Execute a command on a class instance with given arguments."""
-    
+    """Execute a command on a class instance with given arguments (synchronous wrapper)."""
+    return asyncio.run(_execute_command(instance, command_name, command_args))
+
+
+async def async_execute_command_on_class_instance(instance:Any, command_name:str, command_args:list[str]) -> Any:
+    """Async variant of execute_command_on_class_instance."""
+    return await _execute_command(instance, command_name, command_args)
+
+
+def execute_command_and_return_log(instance:Any, command_name:str, command_args:list[str]) -> str:
+    """Execute command and return a formatted log line (synchronous wrapper)."""
+    return asyncio.run(_execute_command_and_format_log(instance, command_name, command_args))
+
+
+async def async_execute_command_and_return_log(instance:Any, command_name:str, command_args:list[str]) -> str:
+    """Async variant of execute_command_and_return_log."""
+    return await _execute_command_and_format_log(instance, command_name, command_args)
+
+
+def _coerce_argument(value:str, expected_type:Any):
+    if expected_type is bool:
+        return value.lower() in ("true", "1", "yes", "on")
+    if expected_type is int:
+        return int(value)
+    if inspect.isclass(expected_type) and issubclass(expected_type, Enum):
+        return expected_type[value.upper()]
+    return value
+
+
+def _prepare_command_execution(instance:Any, command_name:str, command_args:list[str]):
     if not hasattr(instance, command_name):
         raise CommandError(f"Unknown command '{command_name}'")
 
     command_method = getattr(instance, command_name)
-    # Convert args to appropriate types based on method annotations
     typed_args = []
-    method_annotations = command_method.__annotations__
-    for i, arg in enumerate(command_args):
-        param_name = command_method.__code__.co_varnames[i + 1]  # +1 to skip 'self'
-        param_type = method_annotations.get(param_name, str)
-        if param_type is bool:
-            typed_arg = arg.lower() in ("true", "1", "yes", "on")
-        elif param_type is int:
-            typed_arg = int(arg)
-        elif issubclass(param_type, Enum):
-            typed_arg = param_type[arg.upper()]
-        else:
-            typed_arg = arg
-        typed_args.append(typed_arg)
+    annotations = getattr(command_method, "__annotations__", {})
+    for index, arg in enumerate(command_args):
+        param_name = command_method.__code__.co_varnames[index + 1]
+        expected_type = annotations.get(param_name, str)
+        typed_args.append(_coerce_argument(arg, expected_type))
 
-    # print(f"Calling {command_name} with args: {typed_args}")
-    return command_method(*typed_args)
+    return command_method, typed_args
 
-def execute_command_and_return_log(instance:Any, command_name:str, command_args:list[str]) -> str:
-    try:
-        readable_command_name = snake_case_to_human_readable(command_name)
-        res_prefix = f"{' '.join(readable_command_name.split()[1:])} = "
-        res = execute_command_on_class_instance(instance, command_name, command_args)
-    except CommandError as ce:
-        raise ce
-    except Exception as e:
-        raise e
-    else:
-        if res is not None:
-            return f"{res_prefix}{res}"
-        else:
-            return f"{readable_command_name} {' '.join(command_args)} ok"
+
+async def _invoke_command(command_method, typed_args):
+    result = command_method(*typed_args)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+async def _execute_command(instance:Any, command_name:str, command_args:list[str]) -> Any:
+    command_method, typed_args = _prepare_command_execution(instance, command_name, command_args)
+    return await _invoke_command(command_method, typed_args)
+
+
+def _format_log_output(readable_command_name:str, command_args:list[str], result:Any) -> str:
+    res_prefix = f"{' '.join(readable_command_name.split()[1:])} = "
+    if result is not None:
+        return f"{res_prefix}{result}"
+    return f"{readable_command_name} {' '.join(command_args)} ok"
+
+
+async def _execute_command_and_format_log(instance:Any, command_name:str, command_args:list[str]) -> str:
+    readable_command_name = snake_case_to_human_readable(command_name)
+    result = await _execute_command(instance, command_name, command_args)
+    return _format_log_output(readable_command_name, command_args, result)
