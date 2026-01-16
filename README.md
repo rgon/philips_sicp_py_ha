@@ -1,4 +1,5 @@
-# Philips SICP Python & Home Assistant
+# Philips SICP for Implementation & Home Assistant Integration
+> For Philips Signage Displays supporting the Philips Signage Control Protocol (SICP).
 
 This repository contains a Python implementation of the Philips Signage Control Protocol (SICP) called [SICPpy](src/sicppy/README.md) and a Home Assistant integration using it [sicp_homeassistant](src/sicp_homeassistant/README.md).
 
@@ -13,11 +14,14 @@ SICPpy also exposes a CLI to quickly interact with Philips Signage devices, as w
 ### Development install
 1. Requires: [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 2. Clone this repository
-3. Run the `release.sh` script
-4. Copy the generated `dist/sicp_homeassistant-<version>-py3-none-any.whl` file to your Home Assistant `custom_components` folder and unzip it there. Alternatively, you can install it via HACS using the local zip file option.
+3. Sync the packages: `uv sync --all-packages --all-groups`. This will install dependencies onto a local .venv so you get IDE type hints.
+4. Run the `release.sh` script
+5. Copy the generated `dist/sicp_homeassistant.zip` file to your Home Assistant installation and unzip it into `custom_components/sicp_homeassistant`. Alternatively, you can install it via HACS using the local zip file option.
 ----
 
 ## CLI and SICPpy library
+
+Quite handy for configuring multiple displays at the same time.
 
 ### Requirements
 + [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
