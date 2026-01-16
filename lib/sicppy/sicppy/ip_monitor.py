@@ -10,10 +10,11 @@ DEFAULT_PORT = 5000
 TIMEOUT = 2
 
 class SICPIPMonitor(SICPProtocol):
-    def __init__(self, ip:str, monitor_id=1, port=DEFAULT_PORT) -> None:
+    def __init__(self, ip:str, monitor_id=1, port=DEFAULT_PORT, timeout=TIMEOUT) -> None:
         super().__init__(monitor_id=monitor_id)
         self.ip = ip
         self.port = port
+        self.timeout = timeout
 
     async def send_message(self, message, expect_data=False) -> SicpResponse | None:
         """
@@ -34,13 +35,15 @@ class SICPIPMonitor(SICPProtocol):
 
         try:
             connect_coro = asyncio.open_connection(self.ip, self.port)
-            reader, writer = await asyncio.wait_for(connect_coro, timeout=TIMEOUT)
+            # connection timeout
+            reader, writer = await asyncio.wait_for(connect_coro, timeout=self.timeout)
 
             writer.write(message)
-            await asyncio.wait_for(writer.drain(), timeout=TIMEOUT)
+            # write timeout
+            await asyncio.wait_for(writer.drain(), timeout=None) #self.timeout)
 
             if expect_data:
-                response_data = await asyncio.wait_for(reader.read(1024), timeout=TIMEOUT)
+                response_data = await asyncio.wait_for(reader.read(1024), timeout=self.timeout) # read timeout
 
         except asyncio.TimeoutError as exc:
             raise NetworkError("Communication timed out") from exc
