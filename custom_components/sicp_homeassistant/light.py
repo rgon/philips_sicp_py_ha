@@ -93,7 +93,7 @@ class PhilipsSicpLight(PhilipsSicpEntity, LightEntity):
                 error_hint="Precise color temperature is not available on this source",
             )
 
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
         client = self.coordinator.client
@@ -102,4 +102,4 @@ class PhilipsSicpLight(PhilipsSicpEntity, LightEntity):
             False,
             error_hint="Unable to disable the backlight",
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()

@@ -90,7 +90,7 @@ class PhilipsSicpEnumSelect(PhilipsSicpEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         enum_value = self._enum_from_option(option)
         await self._async_set_enum(enum_value)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
 
 
 class PhilipsSicpSmartPowerSelect(PhilipsSicpEnumSelect):
@@ -192,7 +192,7 @@ class PhilipsSicpInputSourceSelect(PhilipsSicpEnumSelect):
         if playlist_target:
             source, playlist_id = playlist_target
             await self._async_set_input_source(source, playlist_id)
-            await self.coordinator.async_request_refresh()
+            await self.coordinator.async_refresh()
             return
         await super().async_select_option(option)
 

@@ -82,7 +82,7 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
                 _LOGGER.info("Sending Wake-on-LAN to %s", self._mac_address)
                 await async_wake_on_lan(self._mac_address)
                 await asyncio.sleep(_TURN_ON_TIME_SECONDS)
-                await self.coordinator.async_request_refresh()
+                await self.coordinator.async_refresh()
             return
 
         await self._async_call_client(
@@ -90,7 +90,7 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
             turn_on,
             error_hint="Unable to power on the display" if turn_on else "Unable to power off the display",
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
 
 
 class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
@@ -114,7 +114,7 @@ class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
             True,
             error_hint="Unable to mute the display audio",
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
         await self._async_call_client(
@@ -122,4 +122,4 @@ class PhilipsSicpMuteSwitch(PhilipsSicpEntity, SwitchEntity):
             False,
             error_hint="Unable to unmute the display audio",
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()

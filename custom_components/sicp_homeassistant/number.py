@@ -49,4 +49,4 @@ class PhilipsSicpVolumeNumber(PhilipsSicpEntity, NumberEntity):
             int(value),
             error_hint="Unable to set the speaker volume",
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
