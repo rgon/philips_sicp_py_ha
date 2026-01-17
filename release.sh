@@ -20,6 +20,10 @@ mv $ARTIFACT_DIR/sicppy $ARTIFACT_DIR/sicp_homeassistant
 # rm everything except sicp_homeassistant from $ARTIFACT_DIR/custom_components
 find $ARTIFACT_DIR -mindepth 1 -maxdepth 1 ! -name 'sicp_homeassistant' -exec rm -rf {} +
 
+# Import vendorized dependencies relatively.
+# For every line in sicp_homeassistant, search for "from sicppy" and replace with "from .sicppy"
+find "$ARTIFACT_DIR/sicp_homeassistant" -type f -name "*.py" -exec sed -i 's/from sicppy/from .sicppy/g' {} +
+
 ARTIFACT_PATH="$ARTIFACT_DIR/$ARTIFACT_NAME"
 
 ( cd "$ARTIFACT_DIR/sicp_homeassistant" && zip -r "$ARTIFACT_PATH" . >/dev/null )
