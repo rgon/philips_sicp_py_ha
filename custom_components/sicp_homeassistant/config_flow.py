@@ -27,6 +27,21 @@ class InvalidResponse(HomeAssistantError):
 
 MAC_REGEX = r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
 
+CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_HOST): cv.string,
+        vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=1,
+                max=255,
+                step=1,
+                mode=selector.NumberSelectorMode.BOX,
+            )
+        ),
+        vol.Required(CONF_MAC_ADDRESS): cv.string,
+    }
+)
+
 class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure new SICP displays."""
 
@@ -68,24 +83,9 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(title=info["title"], data=info["data"])
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_HOST): cv.string,
-                vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=1,
-                        max=255,
-                        step=1,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(CONF_MAC_ADDRESS): cv.string,
-            }
-        )
-
         return self.async_show_form(
             step_id="user",
-            data_schema=self.add_suggested_values_to_schema(schema, user_input or {}),
+            data_schema=self.add_suggested_values_to_schema(CONFIG_SCHEMA, user_input or {}),
             errors=errors,
             description_placeholders=description_placeholders,
         )
