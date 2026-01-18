@@ -24,6 +24,7 @@ from sicppy.messages import (
     ModelInfoFields,
     PowerOnLogoMode,
     PowerState,
+    RemoteLockState,
     SicpInfoFields,
     SmartPowerLevel,
 )
@@ -55,6 +56,7 @@ class SicpDisplayData:
     power_on_logo_mode: PowerOnLogoMode | None
     cold_start_state: ColdStartPowerState | None
     input_source: InputSource | None
+    remote_lock_state: RemoteLockState | None
     volume_speaker: int | None
     volume_audio_out: int | None
     mute: bool | None
@@ -157,6 +159,12 @@ class SicpDisplayClient:
         except Exception:
             _LOGGER.debug("Unable to read input source", exc_info=True)
 
+        remote_lock_state: RemoteLockState | None = None
+        try:
+            remote_lock_state = await self._monitor.get_remote_lock_state()
+        except Exception:
+            _LOGGER.debug("Unable to read remote lock state", exc_info=True)
+
         volume_speaker: int | None = None
         volume_audio_out: int | None = None
         try:
@@ -183,6 +191,7 @@ class SicpDisplayClient:
             power_on_logo_mode=power_on_logo_mode,
             cold_start_state=cold_start_state,
             input_source=input_source,
+            remote_lock_state=remote_lock_state,
             volume_speaker=volume_speaker,
             volume_audio_out=volume_audio_out,
             mute=mute,
@@ -215,6 +224,9 @@ class SicpDisplayClient:
 
     async def set_input_source(self, source: InputSource, playlist: int = 0) -> bool:
         return bool(await self._monitor.set_input_source(source, playlist=playlist))
+
+    async def set_remote_lock_state(self, state: RemoteLockState) -> bool:
+        return bool(await self._monitor.set_remote_lock_state(state))
 
     async def set_mute(self, mute_on: bool) -> bool:
         return bool(await self._monitor.set_mute(mute_on))

@@ -13,6 +13,7 @@ from sicppy.messages import (
     ColdStartPowerState,
     InputSource,
     PowerOnLogoMode,
+    RemoteLockState,
     SmartPowerLevel,
 )
 
@@ -35,6 +36,7 @@ async def async_setup_entry(
             PhilipsSicpSmartPowerSelect(coordinator, entry),
             PhilipsSicpPowerOnLogoSelect(coordinator, entry),
             PhilipsSicpColdStartSelect(coordinator, entry),
+            PhilipsSicpRemoteLockSelect(coordinator, entry),
             PhilipsSicpInputSourceSelect(coordinator, entry),
         ]
     )
@@ -153,6 +155,27 @@ class PhilipsSicpColdStartSelect(PhilipsSicpEnumSelect):
             self.coordinator.client.set_cold_start_power_state,
             enum_value,
             error_hint="Unable to update cold-start power behavior",
+        )
+
+
+class PhilipsSicpRemoteLockSelect(PhilipsSicpEnumSelect):
+    """Select entity for remote lock state."""
+
+    def __init__(self, coordinator: PhilipsSicpCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "remote_lock", RemoteLockState)
+
+    @property
+    def current_option(self) -> str | None:
+        data = self.coordinator.data
+        if not data or data.remote_lock_state is None:
+            return None
+        return self._option_from_enum(data.remote_lock_state)
+
+    async def _async_set_enum(self, enum_value: RemoteLockState) -> None:
+        await self._async_call_client(
+            self.coordinator.client.set_remote_lock_state,
+            enum_value,
+            error_hint="Remote lock control is not available on this display",
         )
 
 
