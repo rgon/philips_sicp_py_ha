@@ -13,7 +13,14 @@ from .const import (
 	PLATFORMS,
 )
 from .coordinator import PhilipsSicpCoordinator, SicpDisplayClient
+from .config_flow import CONFIG_SCHEMA
 
+__all__ = [
+	"async_setup",
+	"async_setup_entry",
+	"async_unload_entry",
+	"CONFIG_SCHEMA",
+]
 
 async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
 	"""Set up the integration namespace."""
