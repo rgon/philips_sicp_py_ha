@@ -3,7 +3,7 @@ name: Release Philips SICP Home Assistant Integration
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   release:
