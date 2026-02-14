@@ -41,11 +41,57 @@
 CLI:
 + [ ] save configured monitors in file/env. Do NOT hardcode
 + [ ] get mac/save mac
++ [ ] CLI get_smart_power_level shall return the enum, not just '22'
+
+GENERAL:
++ [ ] make async? easycli async.
 
 # SICP HA integration
-+ [ ] configure monitors: set IP, monitor ID (optional, default = 1), MAC address
-SETUP UI NOTE:
-> NOTE: the displays MUST be powered on manually right now.
++ [x] remove "requirements": ["sicppy==0.2.0"] manifest.json
++ [x] release script
++ [x] test via ssh script
++ [x] fix incorrect repo (goes to rgon/philipsSignageHA)
++ [x] Setup flow fixes:
+    + [x] move ARP note to bottom, where the MAC address is
+    + [x] note on top to indicate it should be turned on
+    + [x] monitor ID should be ticker/field input, not range slider
+    + [x] keep the entered data, on error, don't reset fields
++ [x] fix flow:
+    + [x] more descriptive payload
+     The display responded with an unexpected payload. 
++ [-] develop script: uv sync --all-packages --all-groups
+
++ [x] no verbose '75BDLxxxxxxx power_xxxx'
++ [x] ensure entity is synced to other integrations: with unifi
++ [x] remove serial from sensor
+
++ [x] fix switches not saving status
++ [x] remove logs
+
++ [x] online/offline status
++ [x] if offline, call wol
++ [x] sleep after turn off to prevent race condition, since it takes some time to turn off
+
++ [ ] browser update command: modern HTML5/CSS support -> chromium 95
+
++ [ ] fix smart power not displaying
++ [ ] fix power on logo not displaying
+
++ [ ] how to access browser 1,2,3 inputs or mediaplayer inputs 1,2,3 from the select? -> browser-menu, browser-1 etc? SICP supports it as a second arg
+
++ [ ] disable all options if display is off except power on
+
+
+
+
++ [ ] relax requires-python to 3.13 since HA is not on 3.14
++ [ ] release action
++ [ ] ensure publishes with HACS https://www.hacs.xyz/docs/publish/
+
+
+
+
+TEST WORKING:
 + [ ] expose status (polling):
     + [ ] get_temperature
     + [ ] get_model_info
@@ -61,20 +107,8 @@ On/Off:
     + [ ] get_power_state power:offline/off/on
     + [ ] get_backlight_state | set_backlight (or as light on/off!)
 Volume slider:
-    + [ ] get_mute | set_mute
-    + [ ] get_volume | set_volume
+    + [ ] merged mute and volume
 As light:
     > Keep in mind that brightness and color temperature is not available if source is internal
     + [ ] get_precise_color_temperature | set_precise_color_temperature
     + [ ] get_brightness_level | set_brightness_level
-
-## WOL
-+ [ ] get mac from SICP
-    + if not possible, use getmac
-    + if else, don't use scapy (requires root): ignore
-
-+ [ ] resolve mac of device given ip python? NOTE: works only in current subnet
-> static ARP entry on router note:
-
-    arp -i br45 -s 192.168.xx.xxx 18:65:yy:yy:yy:yy
-    arp -i br45 -s 192.168.xx.xxx 18:65:yy:yy:yy:yy
