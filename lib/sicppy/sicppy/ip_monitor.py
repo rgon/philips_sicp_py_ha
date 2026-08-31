@@ -40,7 +40,7 @@ class SICPIPMonitor(SICPProtocol):
 
             writer.write(message)
             # write timeout
-            await asyncio.wait_for(writer.drain(), timeout=None) #self.timeout)
+            await asyncio.wait_for(writer.drain(), timeout=self.timeout)
 
             if expect_data:
                 response_data = await asyncio.wait_for(reader.read(1024), timeout=self.timeout) # read timeout
