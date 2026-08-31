@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from sicppy.ip_monitor import NetworkError
 from sicppy.messages import PowerState
 
 from .const import (
@@ -89,23 +90,45 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
 
         if power_state == PowerState.OFFLINE:
             if turn_on:
-                _LOGGER.info(
-                    "Sending Wake-on-LAN to %s via %s",
-                    self._mac_address,
-                    self._broadcast_address,
-                )
-                await async_wake_on_lan(
-                    self._mac_address, broadcast=self._broadcast_address
-                )
-                await asyncio.sleep(_TURN_ON_TIME_SECONDS)
-                await self.coordinator.async_refresh()
+                await self._async_wake_display()
             return
 
-        await self._async_call_client(
-            self.coordinator.client.set_power,
-            turn_on,
-            error_hint="Unable to power on the display" if turn_on else "Unable to power off the display",
+        try:
+            # Called directly rather than through _async_call_client, which
+            # flattens every failure into HomeAssistantError and would hide the
+            # NetworkError this needs to distinguish.
+            await self.coordinator.async_call_client(
+                self.coordinator.client.set_power, turn_on
+            )
+        except NetworkError as exc:
+            # The display stopped answering since the last poll, so the cached
+            # power state is stale. For a power-on that is indistinguishable
+            # from OFFLINE: wake it instead of failing the service call.
+            if not turn_on:
+                raise HomeAssistantError("Unable to power off the display") from exc
+            _LOGGER.debug("Display unreachable on power-on, falling back to Wake-on-LAN")
+            await self._async_wake_display()
+            return
+        except Exception as exc:  # noqa: BLE001
+            raise HomeAssistantError(
+                "Unable to power on the display"
+                if turn_on
+                else "Unable to power off the display"
+            ) from exc
+
+        await self.coordinator.async_refresh()
+
+    async def _async_wake_display(self) -> None:
+        """Send the magic packet and give the panel time to come up."""
+        _LOGGER.info(
+            "Sending Wake-on-LAN to %s via %s",
+            self._mac_address,
+            self._broadcast_address,
         )
+        await async_wake_on_lan(
+            self._mac_address, broadcast=self._broadcast_address
+        )
+        await asyncio.sleep(_TURN_ON_TIME_SECONDS)
         await self.coordinator.async_refresh()
 
 
