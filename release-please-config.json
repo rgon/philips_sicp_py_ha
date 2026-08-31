@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "a54d9c5556b43c26acb061d1ff0072387e022857",
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "philips-sicp-display",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "custom_components/philips_sicp_display/manifest.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "toml",
+          "path": "custom_components/philips_sicp_display/pyproject.toml",
+          "jsonpath": "$.project.version"
+        }
+      ]
+    }
+  }
+}
