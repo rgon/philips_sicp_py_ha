@@ -4,6 +4,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -13,7 +14,6 @@ from .const import (
 	PLATFORMS,
 )
 from .coordinator import PhilipsSicpCoordinator, SicpDisplayClient
-from .config_flow import CONFIG_SCHEMA
 
 __all__ = [
 	"async_setup",
@@ -21,6 +21,11 @@ __all__ = [
 	"async_unload_entry",
 	"CONFIG_SCHEMA",
 ]
+
+# This integration is configured exclusively through the config flow. Without
+# this, Home Assistant would validate the whole configuration.yaml against
+# whatever CONFIG_SCHEMA this module exposes and fail every other domain's keys.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
 	"""Set up the integration namespace."""

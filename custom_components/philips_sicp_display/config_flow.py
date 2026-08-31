@@ -36,7 +36,7 @@ class InvalidResponse(HomeAssistantError):
 
 MAC_REGEX = r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
 
-CONFIG_SCHEMA = vol.Schema(
+STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): cv.string,
         vol.Optional(CONF_MONITOR_ID, default=DEFAULT_MONITOR_ID): selector.NumberSelector(
@@ -79,7 +79,7 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=self.add_suggested_values_to_schema(CONFIG_SCHEMA, user_input or {}),
+            data_schema=self.add_suggested_values_to_schema(STEP_USER_DATA_SCHEMA, user_input or {}),
             errors=errors,
             description_placeholders=description_placeholders,
         )
@@ -132,7 +132,7 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self.add_suggested_values_to_schema(CONFIG_SCHEMA, suggested),
+            data_schema=self.add_suggested_values_to_schema(STEP_USER_DATA_SCHEMA, suggested),
             errors=errors,
             description_placeholders=description_placeholders,
         )
