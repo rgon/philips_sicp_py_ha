@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.1](https://github.com/rgon/philips_sicp_py_ha/compare/v0.7.0...v0.7.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* stop validating configuration.yaml against the config flow schema ([56da44d](https://github.com/rgon/philips_sicp_py_ha/commit/56da44d951cffb6c5e4a5abf1807d826af3308cb))
+
+
+### Documentation
+
+* correct stale component paths in the install instructions ([77cffd1](https://github.com/rgon/philips_sicp_py_ha/commit/77cffd156f0d4f4b4079e62130907c29bbe66d3a))
+
 ## [0.7.0](https://github.com/rgon/philips_sicp_py_ha/compare/v0.6.0...v0.7.0) (2026-08-31)
 
 
