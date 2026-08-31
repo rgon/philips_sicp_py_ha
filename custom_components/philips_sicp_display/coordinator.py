@@ -62,6 +62,14 @@ class SicpDisplayData:
     mute: bool | None
 
 
+@dataclass(slots=True)
+class SicpDisplayIdentity:
+    """Minimal identifying data used to validate and title an entry."""
+
+    serial_number: str | None
+    model_number: str | None
+
+
 class SicpDisplayClient:
     """Async client that proxies calls to a Philips SICP display."""
 
@@ -195,6 +203,36 @@ class SicpDisplayClient:
             volume_speaker=volume_speaker,
             volume_audio_out=volume_audio_out,
             mute=mute,
+        )
+
+    async def fetch_identity(self) -> SicpDisplayIdentity:
+        """Fetch just enough to identify the display.
+
+        Every SICP command opens its own TCP connection, so the full
+        :meth:`fetch_status` costs one round trip (and, when the display is
+        unreachable, one timeout) per field. Config flow validation only needs
+        the serial number and the model number, so read those two alone.
+
+        Failures are swallowed per field, exactly like :meth:`fetch_status`:
+        reconfiguring a powered-off display (to fix the Wake-on-LAN broadcast
+        address, say) must stay possible.
+        """
+
+        serial_number: str | None = None
+        try:
+            serial_number = await self._monitor.get_serial_number()
+        except Exception:
+            _LOGGER.debug("Unable to read serial number", exc_info=True)
+
+        model_number: str | None = None
+        try:
+            model_number = await self._monitor.get_model_info(ModelInfoFields.MODEL_NUMBER)
+        except Exception:
+            _LOGGER.debug("Unable to read model number", exc_info=True)
+
+        return SicpDisplayIdentity(
+            serial_number=serial_number,
+            model_number=model_number,
         )
 
     async def set_power(self, power_on: bool) -> bool:

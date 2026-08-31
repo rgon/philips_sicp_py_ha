@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ipaddress
+from typing import Any, Mapping
 
 import voluptuous as vol
 
@@ -20,10 +21,11 @@ from .const import (
     CONF_BROADCAST_ADDRESS,
     CONF_MAC_ADDRESS,
     CONF_MONITOR_ID,
+    DATA_COORDINATOR,
     DEFAULT_MONITOR_ID,
     DOMAIN,
 )
-from .coordinator import SicpDisplayClient
+from .coordinator import PhilipsSicpCoordinator, SicpDisplayClient
 from .wol import default_broadcast_address
 
 
@@ -89,6 +91,11 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle reconfiguration of an existing entry."""
         entry = self._get_reconfigure_entry()
+        # The entry may not be loaded (or may have failed to set up), in which
+        # case there is no coordinator to serialize against.
+        coordinator: PhilipsSicpCoordinator | None = (
+            self.hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get(DATA_COORDINATOR)
+        )
         errors: dict[str, str] = {}
         description_placeholders: dict[str, str] | None = None
         info: dict | None = None
@@ -99,7 +106,11 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors,
                 description_placeholders,
                 info,
-            ) = await self._async_validate_form(user_input)
+            ) = await self._async_validate_form(
+                user_input,
+                existing=entry.data,
+                coordinator=coordinator,
+            )
 
             if not errors and info is not None:
                 # The unique id is the normalized MAC: pointing the entry at a
@@ -138,7 +149,10 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def _async_validate_form(
-        self, user_input: dict
+        self,
+        user_input: dict,
+        existing: Mapping[str, Any] | None = None,
+        coordinator: PhilipsSicpCoordinator | None = None,
     ) -> tuple[dict, dict[str, str], dict[str, str] | None, dict | None]:
         """Normalize and validate submitted form values.
 
@@ -176,7 +190,12 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if not errors:
             try:
-                info = await self._async_validate_input(self.hass, user_input)
+                info = await self._async_validate_input(
+                    self.hass,
+                    user_input,
+                    existing=existing,
+                    coordinator=coordinator,
+                )
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidResponse as err:
@@ -189,9 +208,20 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return user_input, errors, description_placeholders, info
 
     async def _async_validate_input(
-        self, hass: HomeAssistant, user_input: dict
+        self,
+        hass: HomeAssistant,
+        user_input: dict,
+        existing: Mapping[str, Any] | None = None,
+        coordinator: PhilipsSicpCoordinator | None = None,
     ) -> dict:
-        """Validate the user input allows us to connect."""
+        """Validate the user input allows us to connect.
+
+        ``existing`` is the entry data being reconfigured, if any: it keeps a
+        previously discovered serial number when the display cannot be reached
+        right now. ``coordinator`` is the running coordinator for that entry,
+        used only to borrow its lock — SICP displays accept a single connection
+        at a time, so validation must not run alongside a poll.
+        """
         normalized_mac = format_mac(user_input[CONF_MAC_ADDRESS])
         entry_data = {
             CONF_HOST: user_input[CONF_HOST],
@@ -201,17 +231,29 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             or default_broadcast_address(user_input[CONF_HOST]),
         }
 
+        # Always validate against the freshly submitted target: reconfigure may
+        # be pointing the entry at a different host than the coordinator's own
+        # client knows about.
         client = SicpDisplayClient(entry_data)
         try:
-            data = await client.fetch_status()
+            if coordinator is not None:
+                identity = await coordinator.async_call_client(client.fetch_identity)
+            else:
+                identity = await client.fetch_identity()
         except NetworkError as exc:
             raise CannotConnect from exc
         except Exception as exc:  # noqa: BLE001
             raise InvalidResponse(str(exc)) from exc
 
-        serial = data.serial_number or normalized_mac
-        title = data.model_info.get("model_number") if data.model_info else None
-        title = title or f"Philips Display {user_input[CONF_MONITOR_ID]}"
+        # An unreachable display must not block reconfiguration (the panels are
+        # typically off, waiting for Wake-on-LAN), so fall back to what we
+        # already know before finally settling on the MAC.
+        serial = (
+            identity.serial_number
+            or (existing or {}).get("serial_number")
+            or normalized_mac
+        )
+        title = identity.model_number or f"Philips Display {user_input[CONF_MONITOR_ID]}"
 
         return {
             "title": title,
