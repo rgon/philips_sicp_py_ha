@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.2](https://github.com/rgon/philips_sicp_py_ha/compare/v0.7.1...v0.7.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* **config_flow:** validate with a 2-command identity fetch instead of a full status poll ([c77c780](https://github.com/rgon/philips_sicp_py_ha/commit/c77c7800b7c6a7aa26ff5c1976c8d1e8c2e57aee))
+* fall back to Wake-on-LAN when powering on an unreachable display ([46629f1](https://github.com/rgon/philips_sicp_py_ha/commit/46629f1d46645181921a62207320a50154ae85ac))
+* **sicppy:** bound the SICP write with the connection timeout ([80c02db](https://github.com/rgon/philips_sicp_py_ha/commit/80c02db5c7f3b972ce54bb95f5587a0fdbaeb983))
+* stop polling a display that reports itself offline ([1a84c28](https://github.com/rgon/philips_sicp_py_ha/commit/1a84c2834807480195fe035f2dd33e0fb9c86579))
+
 ## [0.7.1](https://github.com/rgon/philips_sicp_py_ha/compare/v0.7.0...v0.7.1) (2026-08-31)
 
 
