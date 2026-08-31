@@ -62,47 +62,20 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
         description_placeholders: dict[str, str] | None = None
+        info: dict | None = None
 
         if user_input is not None:
-            user_input = user_input.copy()
-            monitor_id = user_input.get(CONF_MONITOR_ID, DEFAULT_MONITOR_ID)
-            try:
-                # coerce int
-                user_input[CONF_MONITOR_ID] = int(monitor_id)
-            except (TypeError, ValueError):
-                errors[CONF_MONITOR_ID] = "invalid_monitor_id"
+            (
+                user_input,
+                errors,
+                description_placeholders,
+                info,
+            ) = await self._async_validate_form(user_input)
 
-            try:
-                cv.matches_regex(MAC_REGEX)(user_input[CONF_MAC_ADDRESS])
-            except vol.Invalid:
-                errors[CONF_MAC_ADDRESS] = "invalid_mac"
-
-            # Blank means "same subnet as the display", the common case.
-            broadcast = (user_input.get(CONF_BROADCAST_ADDRESS) or "").strip()
-            broadcast = broadcast or default_broadcast_address(
-                user_input[CONF_HOST]
-            )
-            user_input[CONF_BROADCAST_ADDRESS] = broadcast
-            try:
-                ipaddress.IPv4Address(broadcast)
-            except ValueError:
-                errors[CONF_BROADCAST_ADDRESS] = "invalid_broadcast_address"
-
-            if not errors:
-                try:
-                    info = await self._async_validate_input(self.hass, user_input)
-                except CannotConnect:
-                    errors["base"] = "cannot_connect"
-                except InvalidResponse as err:
-                    errors["base"] = "setup_error"
-                    detail = str(err) or "See logs for details"
-                    description_placeholders = {"error_detail": detail}
-                except Exception:  # noqa: BLE001
-                    errors["base"] = "unknown"
-                else:
-                    await self.async_set_unique_id(info["unique_id"])
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(title=info["title"], data=info["data"])
+            if not errors and info is not None:
+                await self.async_set_unique_id(info["unique_id"])
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title=info["title"], data=info["data"])
 
         return self.async_show_form(
             step_id="user",
@@ -110,6 +83,98 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders=description_placeholders,
         )
+
+    async def async_step_reconfigure(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Handle reconfiguration of an existing entry."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] | None = None
+        info: dict | None = None
+
+        if user_input is not None:
+            (
+                user_input,
+                errors,
+                description_placeholders,
+                info,
+            ) = await self._async_validate_form(user_input)
+
+            if not errors and info is not None:
+                # The unique id is the normalized MAC: pointing the entry at a
+                # different display must not silently hijack it.
+                await self.async_set_unique_id(info["unique_id"])
+                self._abort_if_unique_id_mismatch()
+                return self.async_update_reload_and_abort(
+                    entry,
+                    # data_updates merges, so keys the form does not cover
+                    # (serial_number, anything added later) survive the update.
+                    # Aborts with "reconfigure_successful" and reloads the entry.
+                    data_updates=info["data"],
+                )
+
+        # Pre-fill with what is configured today, falling back to what the user
+        # just typed so a validation error does not discard their edits.
+        suggested = dict(entry.data) if user_input is None else user_input
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(CONFIG_SCHEMA, suggested),
+            errors=errors,
+            description_placeholders=description_placeholders,
+        )
+
+    async def _async_validate_form(
+        self, user_input: dict
+    ) -> tuple[dict, dict[str, str], dict[str, str] | None, dict | None]:
+        """Normalize and validate submitted form values.
+
+        Returns the normalized input (suitable for re-seeding the form), the
+        field errors, optional description placeholders and, when everything
+        checks out, the validated entry info.
+        """
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] | None = None
+        info: dict | None = None
+
+        user_input = user_input.copy()
+        monitor_id = user_input.get(CONF_MONITOR_ID, DEFAULT_MONITOR_ID)
+        try:
+            # coerce int
+            user_input[CONF_MONITOR_ID] = int(monitor_id)
+        except (TypeError, ValueError):
+            errors[CONF_MONITOR_ID] = "invalid_monitor_id"
+
+        try:
+            cv.matches_regex(MAC_REGEX)(user_input[CONF_MAC_ADDRESS])
+        except vol.Invalid:
+            errors[CONF_MAC_ADDRESS] = "invalid_mac"
+
+        # Blank means "same subnet as the display", the common case.
+        broadcast = (user_input.get(CONF_BROADCAST_ADDRESS) or "").strip()
+        broadcast = broadcast or default_broadcast_address(
+            user_input[CONF_HOST]
+        )
+        user_input[CONF_BROADCAST_ADDRESS] = broadcast
+        try:
+            ipaddress.IPv4Address(broadcast)
+        except ValueError:
+            errors[CONF_BROADCAST_ADDRESS] = "invalid_broadcast_address"
+
+        if not errors:
+            try:
+                info = await self._async_validate_input(self.hass, user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidResponse as err:
+                errors["base"] = "setup_error"
+                detail = str(err) or "See logs for details"
+                description_placeholders = {"error_detail": detail}
+            except Exception:  # noqa: BLE001
+                errors["base"] = "unknown"
+
+        return user_input, errors, description_placeholders, info
 
     async def _async_validate_input(
         self, hass: HomeAssistant, user_input: dict

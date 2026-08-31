@@ -14,7 +14,26 @@
           "mac": "The MAC address of the display, used to build the Wake-on-LAN magic packet so it can be woken while powered off.",
           "broadcast_address": "Optional. Leave blank when the display shares a subnet with Home Assistant and the broadcast address of the display's /24 is used automatically. Set it only when the display is on another subnet: the packet must then be addressed to an unused IP in the display's subnet that your router maps to ff:ff:ff:ff:ff:ff via a static ARP entry. See UNIFI_SETUP.md."
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Philips SICP Display",
+        "description": "Update the connection details for the display. NOTE: The display must be turned on and connected to a network accessible by Home Assistant. It must remain the same physical display: the MAC address identifies the entry and cannot be pointed at a different device.",
+        "data": {
+          "host": "IP address",
+          "monitor_id": "Monitor ID",
+          "mac": "MAC address (for Wake-on-LAN)",
+          "broadcast_address": "Wake-on-LAN broadcast address"
+        },
+        "data_description": {
+          "mac": "The MAC address of the display, used to build the Wake-on-LAN magic packet so it can be woken while powered off.",
+          "broadcast_address": "Optional. Leave blank when the display shares a subnet with Home Assistant and the broadcast address of the display's /24 is used automatically. Set it only when the display is on another subnet: the packet must then be addressed to an unused IP in the display's subnet that your router maps to ff:ff:ff:ff:ff:ff via a static ARP entry. See UNIFI_SETUP.md."
+        }
       }
+    },
+    "abort": {
+      "already_configured": "This display is already configured.",
+      "reconfigure_successful": "The display configuration was updated.",
+      "unique_id_mismatch": "The MAC address belongs to a different display. Reconfiguring must keep the same physical display; add the other display as a new entry instead."
     },
     "error": {
       "cannot_connect": "Unable to connect to the display. Confirm the IP, monitor ID, and network reachability.",
