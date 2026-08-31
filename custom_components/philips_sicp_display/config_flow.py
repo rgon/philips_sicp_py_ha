@@ -116,7 +116,19 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Pre-fill with what is configured today, falling back to what the user
         # just typed so a validation error does not discard their edits.
-        suggested = dict(entry.data) if user_input is None else user_input
+        if user_input is None:
+            suggested = dict(entry.data)
+            # The stored broadcast is always concrete, even when the user left
+            # the field blank to mean "derive it". Show it blank again in that
+            # case, so changing the host to another subnet re-derives instead
+            # of silently keeping the old subnet's broadcast address.
+            stored_broadcast = suggested.get(CONF_BROADCAST_ADDRESS)
+            if stored_broadcast and stored_broadcast == default_broadcast_address(
+                entry.data.get(CONF_HOST, "")
+            ):
+                suggested.pop(CONF_BROADCAST_ADDRESS)
+        else:
+            suggested = user_input
 
         return self.async_show_form(
             step_id="reconfigure",

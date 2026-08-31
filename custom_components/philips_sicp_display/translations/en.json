@@ -32,6 +32,7 @@
     },
     "abort": {
       "already_configured": "This display is already configured.",
+      "already_in_progress": "This display is already being set up.",
       "reconfigure_successful": "The display configuration was updated.",
       "unique_id_mismatch": "The MAC address belongs to a different display. Reconfiguring must keep the same physical display; add the other display as a new entry instead."
     },
