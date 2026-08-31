@@ -92,6 +92,31 @@ class SicpDisplayClient:
         except Exception:
             _LOGGER.debug("Unable to read power state", exc_info=True)
 
+        # get_power_state() reports OFFLINE when the display does not answer.
+        # Every read below would then burn the full connect timeout - about
+        # twenty of them, which outlasts UPDATE_INTERVAL and pins the
+        # coordinator lock, blocking button presses behind a poll that can
+        # only fail. Nothing else is knowable about an unreachable display.
+        if power_state == PowerState.OFFLINE:
+            return SicpDisplayData(
+                power_state=power_state,
+                backlight_on=None,
+                brightness=None,
+                precise_color_temperature=None,
+                temperatures=[],
+                serial_number=None,
+                model_info={},
+                sicp_info={},
+                smart_power_level=None,
+                power_on_logo_mode=None,
+                cold_start_state=None,
+                input_source=None,
+                remote_lock_state=None,
+                volume_speaker=None,
+                volume_audio_out=None,
+                mute=None,
+            )
+
         brightness: int | None = None
         try:
             brightness = await self._monitor.get_brightness_level()
