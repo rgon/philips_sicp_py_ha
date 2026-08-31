@@ -12,7 +12,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from sicppy.messages import PowerState
 
-from .const import CONF_MAC_ADDRESS, DATA_COORDINATOR, DOMAIN
+from .const import (
+    CONF_BROADCAST_ADDRESS,
+    CONF_MAC_ADDRESS,
+    DATA_COORDINATOR,
+    DEFAULT_BROADCAST_ADDRESS,
+    DOMAIN,
+)
 from .coordinator import PhilipsSicpCoordinator
 from .entity import PhilipsSicpEntity
 from .wol import async_wake_on_lan
@@ -47,6 +53,9 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
         if not isinstance(mac, str) or not mac:
             raise HomeAssistantError("Missing MAC address for power switch entity")
         self._mac_address = mac
+        self._broadcast_address = entry.data.get(
+            CONF_BROADCAST_ADDRESS, DEFAULT_BROADCAST_ADDRESS
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -79,8 +88,14 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
 
         if power_state == PowerState.OFFLINE:
             if turn_on:
-                _LOGGER.info("Sending Wake-on-LAN to %s", self._mac_address)
-                await async_wake_on_lan(self._mac_address)
+                _LOGGER.info(
+                    "Sending Wake-on-LAN to %s via %s",
+                    self._mac_address,
+                    self._broadcast_address,
+                )
+                await async_wake_on_lan(
+                    self._mac_address, broadcast=self._broadcast_address
+                )
                 await asyncio.sleep(_TURN_ON_TIME_SECONDS)
                 await self.coordinator.async_refresh()
             return

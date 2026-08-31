@@ -1,6 +1,8 @@
 """Config flow for the Philips SICP display integration."""
 from __future__ import annotations
 
+import ipaddress
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -14,7 +16,14 @@ from homeassistant.exceptions import HomeAssistantError
 
 from sicppy.ip_monitor import NetworkError
 
-from .const import CONF_MAC_ADDRESS, CONF_MONITOR_ID, DEFAULT_MONITOR_ID, DOMAIN
+from .const import (
+    CONF_BROADCAST_ADDRESS,
+    CONF_MAC_ADDRESS,
+    CONF_MONITOR_ID,
+    DEFAULT_BROADCAST_ADDRESS,
+    DEFAULT_MONITOR_ID,
+    DOMAIN,
+)
 from .coordinator import SicpDisplayClient
 
 
@@ -39,6 +48,9 @@ CONFIG_SCHEMA = vol.Schema(
             )
         ),
         vol.Required(CONF_MAC_ADDRESS): cv.string,
+        vol.Optional(
+            CONF_BROADCAST_ADDRESS, default=DEFAULT_BROADCAST_ADDRESS
+        ): cv.string,
     }
 )
 
@@ -66,6 +78,15 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 cv.matches_regex(MAC_REGEX)(user_input[CONF_MAC_ADDRESS])
             except vol.Invalid:
                 errors[CONF_MAC_ADDRESS] = "invalid_mac"
+
+            broadcast = (
+                user_input.get(CONF_BROADCAST_ADDRESS) or DEFAULT_BROADCAST_ADDRESS
+            )
+            user_input[CONF_BROADCAST_ADDRESS] = broadcast
+            try:
+                ipaddress.IPv4Address(broadcast)
+            except ValueError:
+                errors[CONF_BROADCAST_ADDRESS] = "invalid_broadcast_address"
 
             if not errors:
                 try:
@@ -99,6 +120,9 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_HOST: user_input[CONF_HOST],
             CONF_MONITOR_ID: user_input[CONF_MONITOR_ID],
             CONF_MAC_ADDRESS: normalized_mac,
+            CONF_BROADCAST_ADDRESS: user_input.get(
+                CONF_BROADCAST_ADDRESS, DEFAULT_BROADCAST_ADDRESS
+            ),
         }
 
         client = SicpDisplayClient(entry_data)

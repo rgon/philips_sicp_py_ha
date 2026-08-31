@@ -26,8 +26,15 @@ async def async_wake_on_lan(
 	*,
 	broadcast: str = "255.255.255.255",
 	port: int = 9,
+	repeat: int = 3,
+	delay: float = 0.1,
 ) -> None:
-	"""Send a Wake-on-LAN magic packet to the requested MAC address."""
+	"""Send a Wake-on-LAN magic packet to the requested MAC address.
+
+	The packet is sent ``repeat`` times: it is a single unacknowledged UDP
+	datagram, and a lone loss is indistinguishable from a display that
+	refused to wake.
+	"""
 
 	packet = build_magic_packet(mac_address)
 	loop = asyncio.get_running_loop()
@@ -38,7 +45,10 @@ async def async_wake_on_lan(
 	)
 
 	try:
-		transport.sendto(packet)
+		for attempt in range(repeat):
+			if attempt:
+				await asyncio.sleep(delay)
+			transport.sendto(packet)
 		await asyncio.sleep(0)  # ensure the send is flushed before closing
 	finally:
 		transport.close()

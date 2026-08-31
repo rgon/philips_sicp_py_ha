@@ -7,10 +7,12 @@
         "data": {
           "host": "IP address",
           "monitor_id": "Monitor ID",
-          "mac": "MAC address (for Wake-on-LAN)"
+          "mac": "MAC address (for Wake-on-LAN)",
+          "broadcast_address": "Wake-on-LAN broadcast address"
         },
         "data_description": {
-          "mac": "Ensure the display shares the same subnet with Home Assistant. If not the case, allow access between those subnets and configure a static ARP entry on your router with a command similar to `arp -i brXX -s 192.168.XX.YYY 18:65:71:ZZ:ZZ:ZZ` before proceeding, so that broadcast messages reach the display. This will let the WoL packets wake up the display when it's turned off."
+          "mac": "The MAC address of the display, used to build the Wake-on-LAN magic packet so it can be woken while powered off.",
+          "broadcast_address": "Leave at 255.255.255.255 when the display shares a subnet with Home Assistant. If it is on another subnet, the limited broadcast is never routed: enter an unused IP in the display's subnet (for example 192.168.45.250), bind that IP to ff:ff:ff:ff:ff:ff with a static ARP entry on your router, and allow UDP port 9 between the two subnets. See UNIFI_SETUP.md."
         }
       }
     },
@@ -18,6 +20,8 @@
       "cannot_connect": "Unable to connect to the display. Confirm the IP, monitor ID, and network reachability.",
       "setup_error": "Error during display setup or connection check: {error_detail}",
       "invalid_monitor_id": "Monitor ID must be a number between 1 and 255.",
+      "invalid_mac": "MAC address must be six hexadecimal pairs separated by colons or dashes.",
+      "invalid_broadcast_address": "Broadcast address must be a valid IPv4 address.",
       "unknown": "Unexpected error"
     }
   }
