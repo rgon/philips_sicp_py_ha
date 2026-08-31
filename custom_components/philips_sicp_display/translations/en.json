@@ -12,7 +12,7 @@
         },
         "data_description": {
           "mac": "The MAC address of the display, used to build the Wake-on-LAN magic packet so it can be woken while powered off.",
-          "broadcast_address": "Leave at 255.255.255.255 when the display shares a subnet with Home Assistant. If it is on another subnet, the limited broadcast is never routed: enter an unused IP in the display's subnet (for example 192.168.45.250), bind that IP to ff:ff:ff:ff:ff:ff with a static ARP entry on your router, and allow UDP port 9 between the two subnets. See UNIFI_SETUP.md."
+          "broadcast_address": "Optional. Leave blank when the display shares a subnet with Home Assistant and the broadcast address of the display's /24 is used automatically. Set it only when the display is on another subnet: the packet must then be addressed to an unused IP in the display's subnet that your router maps to ff:ff:ff:ff:ff:ff via a static ARP entry. See UNIFI_SETUP.md."
         }
       }
     },

@@ -6,6 +6,7 @@ import logging
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -16,12 +17,11 @@ from .const import (
     CONF_BROADCAST_ADDRESS,
     CONF_MAC_ADDRESS,
     DATA_COORDINATOR,
-    DEFAULT_BROADCAST_ADDRESS,
     DOMAIN,
 )
 from .coordinator import PhilipsSicpCoordinator
 from .entity import PhilipsSicpEntity
-from .wol import async_wake_on_lan
+from .wol import async_wake_on_lan, default_broadcast_address
 
 _LOGGER = logging.getLogger(__name__)
 _TURN_OFF_TIME_SECONDS = 15
@@ -53,9 +53,10 @@ class PhilipsSicpPowerSwitch(PhilipsSicpEntity, SwitchEntity):
         if not isinstance(mac, str) or not mac:
             raise HomeAssistantError("Missing MAC address for power switch entity")
         self._mac_address = mac
+        # Entries created before the field existed derive it from the host.
         self._broadcast_address = entry.data.get(
-            CONF_BROADCAST_ADDRESS, DEFAULT_BROADCAST_ADDRESS
-        )
+            CONF_BROADCAST_ADDRESS
+        ) or default_broadcast_address(entry.data[CONF_HOST])
 
     @property
     def is_on(self) -> bool | None:

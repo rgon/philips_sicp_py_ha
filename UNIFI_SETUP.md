@@ -1,13 +1,22 @@
 # Wake-on-LAN across subnets (UniFi)
 
 Only needed when Home Assistant and the display are on **different** subnets. If they
-share a subnet, leave the broadcast address at `255.255.255.255` and ignore this file.
+share a subnet, leave the broadcast address blank and ignore this file.
 
 ## Why the default fails
 
-`255.255.255.255` is the *limited* broadcast address. It is non-routable by definition:
-the gateway drops it instead of forwarding it, so the magic packet never leaves Home
-Assistant's own VLAN.
+Left blank, the integration derives the broadcast address from the display's IP, assuming
+a `/24` — a display on `192.168.45.31` gives `192.168.45.255`. That is correct whenever
+Home Assistant is on the same subnet, and wrong for any subnet that is not a `/24`, where
+you must set the address by hand.
+
+Across subnets it does not work unaided. `192.168.45.255` is a *directed* broadcast, and
+Linux drops routed directed broadcasts unless `net.ipv4.conf.br45.bc_forwarding=1` is
+set. `255.255.255.255` is worse: the *limited* broadcast is non-routable by definition, so
+the gateway drops it and the packet never leaves Home Assistant's own VLAN.
+
+The approach below avoids both problems by using an ordinary host address, which the
+gateway routes and resolves like any other.
 
 The fix is to send the packet to a **routable** address in the display's subnet, and have
 the gateway resolve that address to the broadcast MAC. The gateway then floods the frame
@@ -75,7 +84,8 @@ chmod +x /data/on_boot.d/10-wol-arp.sh
 ## 5. Configure the integration
 
 Set the integration's **Wake-on-LAN broadcast address** to the beacon IP
-(`192.168.45.250`), not to `255.255.255.255` and not to the display's own IP.
+(`192.168.45.250`). Do not leave it blank — the derived `192.168.45.255` is a directed
+broadcast and will be dropped in transit.
 
 Pointing it at the display's real IP would also work, but every SICP control packet on
 TCP 5000 would then be flooded across the whole VLAN.

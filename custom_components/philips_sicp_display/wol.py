@@ -3,12 +3,35 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 from typing import Final
 
-__all__ = ["build_magic_packet", "async_wake_on_lan"]
+__all__ = [
+	"build_magic_packet",
+	"async_wake_on_lan",
+	"default_broadcast_address",
+]
 
 _MAGIC_PREFIX: Final[bytes] = b"\xff" * 6
+_LIMITED_BROADCAST: Final[str] = "255.255.255.255"
 _HEX_DIGITS: Final[set[str]] = set("0123456789abcdefABCDEF")
+
+def default_broadcast_address(host: str) -> str:
+	"""Return the broadcast address of the subnet the display sits in.
+
+	Assumes the /24 that virtually every home network uses. A directed
+	broadcast is preferable to 255.255.255.255: the kernel can pick the
+	right interface for it, which the limited broadcast leaves to chance on
+	a multi-homed host. Falls back to the limited broadcast when the host is
+	a name rather than an IPv4 literal.
+	"""
+
+	try:
+		network = ipaddress.IPv4Network(f"{host}/24", strict=False)
+	except ValueError:
+		return _LIMITED_BROADCAST
+	return str(network.broadcast_address)
+
 
 def build_magic_packet(mac_address: str) -> bytes:
 	"""Return the WOL magic packet for the provided MAC address."""
@@ -24,7 +47,7 @@ def build_magic_packet(mac_address: str) -> bytes:
 async def async_wake_on_lan(
 	mac_address: str,
 	*,
-	broadcast: str = "255.255.255.255",
+	broadcast: str = _LIMITED_BROADCAST,
 	port: int = 9,
 	repeat: int = 3,
 	delay: float = 0.1,

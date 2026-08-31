@@ -20,11 +20,11 @@ from .const import (
     CONF_BROADCAST_ADDRESS,
     CONF_MAC_ADDRESS,
     CONF_MONITOR_ID,
-    DEFAULT_BROADCAST_ADDRESS,
     DEFAULT_MONITOR_ID,
     DOMAIN,
 )
 from .coordinator import SicpDisplayClient
+from .wol import default_broadcast_address
 
 
 class CannotConnect(HomeAssistantError):
@@ -48,9 +48,7 @@ CONFIG_SCHEMA = vol.Schema(
             )
         ),
         vol.Required(CONF_MAC_ADDRESS): cv.string,
-        vol.Optional(
-            CONF_BROADCAST_ADDRESS, default=DEFAULT_BROADCAST_ADDRESS
-        ): cv.string,
+        vol.Optional(CONF_BROADCAST_ADDRESS): cv.string,
     }
 )
 
@@ -79,8 +77,10 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except vol.Invalid:
                 errors[CONF_MAC_ADDRESS] = "invalid_mac"
 
-            broadcast = (
-                user_input.get(CONF_BROADCAST_ADDRESS) or DEFAULT_BROADCAST_ADDRESS
+            # Blank means "same subnet as the display", the common case.
+            broadcast = (user_input.get(CONF_BROADCAST_ADDRESS) or "").strip()
+            broadcast = broadcast or default_broadcast_address(
+                user_input[CONF_HOST]
             )
             user_input[CONF_BROADCAST_ADDRESS] = broadcast
             try:
@@ -120,9 +120,8 @@ class PhilipsSicpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_HOST: user_input[CONF_HOST],
             CONF_MONITOR_ID: user_input[CONF_MONITOR_ID],
             CONF_MAC_ADDRESS: normalized_mac,
-            CONF_BROADCAST_ADDRESS: user_input.get(
-                CONF_BROADCAST_ADDRESS, DEFAULT_BROADCAST_ADDRESS
-            ),
+            CONF_BROADCAST_ADDRESS: user_input.get(CONF_BROADCAST_ADDRESS)
+            or default_broadcast_address(user_input[CONF_HOST]),
         }
 
         client = SicpDisplayClient(entry_data)
