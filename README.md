@@ -1,7 +1,7 @@
 # Philips SICP for Implementation & Home Assistant Integration
 For Philips Signage Displays supporting the Philips Signage Control Protocol (SICP).
 
-This repository contains a Python implementation of the Philips Signage Control Protocol (SICP) called [SICPpy](src/sicppy/README.md) and a Home Assistant integration using it [sicp_homeassistant](src/sicp_homeassistant/README.md).
+This repository contains a Python implementation of the Philips Signage Control Protocol (SICP) called [SICPpy](lib/sicppy/README.md) and a Home Assistant integration using it [philips_sicp_display](custom_components/philips_sicp_display/README.md).
 
 ## Home Assistant Integration
 
@@ -22,7 +22,7 @@ Also uses WoL to wake up powered-off displays (see smart power modes in the manu
 2. Clone this repository
 3. Sync the packages: `uv sync --all-packages --all-groups`. This will install dependencies onto a local .venv so you get IDE type hints.
 4. Run the `release.sh` script
-5. Copy the generated `dist/sicp_homeassistant.zip` file to your Home Assistant installation and unzip it into `custom_components/sicp_homeassistant`. Alternatively, you can install it via HACS using the local zip file option.
+5. Copy the generated `dist/philips_sicp_display.zip` file to your Home Assistant installation and unzip it into `custom_components/philips_sicp_display`. The directory name must match the integration's domain exactly, or Home Assistant will not load it. Alternatively, you can install it via HACS using the local zip file option.
 
 ----
 
