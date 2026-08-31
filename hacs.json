@@ -4,5 +4,5 @@
     "hacs": "2.0.5",
     "hide_default_branch": true,
     "zip_release": true,
-    "filename": "sicp_homeassistant.zip"
+    "filename": "philips_sicp_display.zip"
 }

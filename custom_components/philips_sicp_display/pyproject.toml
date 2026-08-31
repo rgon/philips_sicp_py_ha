@@ -1,5 +1,5 @@
 [project]
-name = "sicp-homeassistant"
+name = "philips-sicp-display"
 version = "0.2.3"
 description = "Add your description here"
 readme = "README.md"
@@ -25,14 +25,14 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["sicp_homeassistant"]
+packages = ["philips_sicp_display"]
 include-package-data = true
 
 [tool.setuptools.package-dir]
-sicp_homeassistant = "."
+philips_sicp_display = "."
 
 [tool.setuptools.package-data]
-sicp_homeassistant = [
+philips_sicp_display = [
     "manifest.json",
     "strings.json",
     "translations/**/*.json",

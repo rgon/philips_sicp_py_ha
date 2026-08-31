@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARTIFACT_DIR="$ROOT_DIR/dist"
-ARTIFACT_NAME="sicp_homeassistant.zip"
+ARTIFACT_NAME="philips_sicp_display.zip"
 
 # ensure the artifact dir is empty
 rm -rf "$ARTIFACT_DIR"
@@ -12,20 +12,20 @@ mkdir -p "$ARTIFACT_DIR"
 
 # Build the custom_components with vendored dependencies
 uv build
-uv pip install --target $ARTIFACT_DIR custom_components/sicp_homeassistant/
+uv pip install --target $ARTIFACT_DIR custom_components/philips_sicp_display/
 uv pip install --target $ARTIFACT_DIR lib/sicppy/
 
-# vendorize sicppy into sicp_homeassistant
-mv $ARTIFACT_DIR/sicppy $ARTIFACT_DIR/sicp_homeassistant
-# rm everything except sicp_homeassistant from $ARTIFACT_DIR/custom_components
-find $ARTIFACT_DIR -mindepth 1 -maxdepth 1 ! -name 'sicp_homeassistant' -exec rm -rf {} +
+# vendorize sicppy into philips_sicp_display
+mv $ARTIFACT_DIR/sicppy $ARTIFACT_DIR/philips_sicp_display
+# rm everything except philips_sicp_display from $ARTIFACT_DIR/custom_components
+find $ARTIFACT_DIR -mindepth 1 -maxdepth 1 ! -name 'philips_sicp_display' -exec rm -rf {} +
 
 # Import vendorized dependencies relatively.
-# For every line in sicp_homeassistant, search for "from sicppy" and replace with "from .sicppy"
-find "$ARTIFACT_DIR/sicp_homeassistant" -type f -name "*.py" -exec sed -i 's/from sicppy/from .sicppy/g' {} +
+# For every line in philips_sicp_display, search for "from sicppy" and replace with "from .sicppy"
+find "$ARTIFACT_DIR/philips_sicp_display" -type f -name "*.py" -exec sed -i 's/from sicppy/from .sicppy/g' {} +
 
 ARTIFACT_PATH="$ARTIFACT_DIR/$ARTIFACT_NAME"
 
-( cd "$ARTIFACT_DIR/sicp_homeassistant" && zip -r "$ARTIFACT_PATH" . >/dev/null )
+( cd "$ARTIFACT_DIR/philips_sicp_display" && zip -r "$ARTIFACT_PATH" . >/dev/null )
 
 echo "Created release artifact at $ARTIFACT_PATH"

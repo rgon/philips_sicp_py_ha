@@ -11,7 +11,7 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "lib/sicppy",
-    "custom_components/sicp_homeassistant",
+    "custom_components/philips_sicp_display",
 ]
 
 [tool.uv.sources]
@@ -23,12 +23,12 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["sicppy", "sicp_homeassistant"]
+packages = ["sicppy", "philips_sicp_display"]
 include-package-data = true
 
 [tool.setuptools.package-dir]
 sicppy = "lib/sicppy/sicppy"
-sicp_homeassistant = "custom_components/sicp_homeassistant"
+philips_sicp_display = "custom_components/philips_sicp_display"
 
 [tool.pyright]
 extraPaths = [
